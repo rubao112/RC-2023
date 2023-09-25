@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-
 // Baudrate settings are defined in <asm/termbits.h>, which is
 // included by <termios.h>
 #define BAUDRATE B38400
@@ -117,7 +116,6 @@ int main(int argc, char *argv[])
     buf[3] = buf[1] ^ buf[2];
     buf[4] = 0x7E;
 
-
     /*
     for (int i = 0; i < BUF_SIZE; i++)
     {
@@ -130,16 +128,20 @@ int main(int argc, char *argv[])
     // The whole buffer must be sent even with the '\n'.
     // buf[5] = '\n';
 
+    int readsCounter = 0;
+
+    bool notRead = true;
+
     (void)signal(SIGALRM, alarmHandler);
 
-    while (alarmCount < 4)
+    while (readsCounter < 3 && notRead)
     {
         if (alarmEnabled == FALSE)
         {
             int bytes = write(fd, buf, BUF_SIZE);
             printf("%d bytes written\n", bytes);
 
-    // Wait until all bytes have been written to the serial port
+            // Wait until all bytes have been written to the serial port
             sleep(1);
             alarm(3); // Set alarm to be triggered in 3s
             alarmEnabled = TRUE;
@@ -148,41 +150,29 @@ int main(int argc, char *argv[])
         unsigned char buf2[BUF_SIZE + 1] = {0};
         int i = 0;
         int bytes2 = read(fd, buf2, 1);
-        if(bytes2 == 0) continue;
+        if (bytes2 != 1){
+            readsCounter++;
+            continue;
+        }
 
-        while(buf2[0]!=0x7E){
+        while (buf2[0] != 0x7E)
+        {
             bytes2 = read(fd, buf2, 1);
         }
-        do{
+        do
+        {
             i++;
             bytes2 = read(fd, buf2, 1);
-            }while(buf2[i]!=0x7E);
+        } while (buf2[i] != 0x7E);
         buf2[i + 1] = '\0';
-        printf(":%s:%d\n", buf, i+1);
+        printf(":%s:%d\n", buf, i + 1);
 
-        printf("var = 0x%02X\n", buf2[2]);   
-
+        printf("var = 0x%02X\n", buf2[2]);
+        readsCounter++;
+        notRead = FALSE;
     }
 
     alarm(0);
-
-    unsigned char buf2[BUF_SIZE + 1] = {0};
-    int i = 0;
-    int bytes2 = read(fd, buf2, 1);
-    if(bytes2 == 0) main(argc, argv);
-
-    while(buf2[0]!=0x7E){
-        bytes2 = read(fd, buf2, 1);
-    }
-    do{
-        i++;
-        bytes2 = read(fd, buf2, 1);
-        }while(buf2[i]!=0x7E);
-    buf2[i + 1] = '\0';
-    printf(":%s:%d\n", buf, i+1);
-
-    printf("var = 0x%02X\n", buf2[2]);        
-    
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
