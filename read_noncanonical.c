@@ -92,14 +92,25 @@ int main(int argc, char *argv[])
     unsigned char buf[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
     unsigned char buf2[BUF_SIZE + 1] = {0};
     int i = 0;
-    int bytes = read(fd, buf[i], 1);
+    int red;
+    int bytes = read(fd, red, 1);
+    buf[0] = red;
+    switch(red){
+    case (red == 0x7E && i == 0):
     while(buf[0]!=0x7E){
         bytes = read(fd, buf[i], 1);
     }
+    
+    case (
     do{
-        i++;
-        bytes = read(fd, buf[i], 1);
-        }while(buf[i]!=0x7E)
+        
+        bytes = read(fd, buf[i+1], 1);
+        if(buf[i!=0x7E){
+            i++;
+        }
+        }while(buf[i]!=0x7E && i!=0);
+}
+
     buf[i + 1] = '\0';
     printf(":%s:%d\n", buf, i+1);
     printf("var = 0x%02X\n", buf[2]);
