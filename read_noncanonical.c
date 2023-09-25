@@ -19,7 +19,7 @@
 #define FALSE 0
 #define TRUE 1
 
-#define BUF_SIZE 5
+#define BUF_SIZE 256
 
 volatile int STOP = FALSE;
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 1;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -91,13 +91,19 @@ int main(int argc, char *argv[])
     // Loop for input
     unsigned char buf[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
     unsigned char buf2[BUF_SIZE + 1] = {0};
-    
-    // Returns after 5 chars have been input
-    int bytes = read(fd, buf, BUF_SIZE);
-    buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
-
-    printf(":%s:%d\n", buf, bytes);
+    int i = 0;
+    int bytes = read(fd, buf[i], 1);
+    while(buf[0]!=0x7E){
+        bytes = read(fd, buf[i], 1);
+    }
+    do{
+        i++;
+        bytes = read(fd, buf[i], 1);
+        }while(buf[i]!=0x7E)
+    buf[i + 1] = '\0';
+    printf(":%s:%d\n", buf, i+1);
     printf("var = 0x%02X\n", buf[2]);
+    
     if (buf[1] ^ buf[2] == buf[3]){
         buf2[0]= buf[0];
         buf2[1]= 0x01;
