@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
+#include <signal.h>
+
 
 // Baudrate settings are defined in <asm/termbits.h>, which is
 // included by <termios.h>
@@ -19,9 +21,26 @@
 #define FALSE 0
 #define TRUE 1
 
-#define BUF_SIZE 6
+#define BUF_SIZE 256
 
 volatile int STOP = FALSE;
+
+#define FALSE 0
+#define TRUE 1
+
+int alarmEnabled = FALSE;
+int alarmCount = 0;
+
+int readCounter = 0;
+
+// Alarm function handler
+void alarmHandler(int signal)
+{
+    alarmEnabled = FALSE;
+    alarmCount++;
+
+    printf("Alarm #%d\n", alarmCount);
+}
 
 int main(int argc, char *argv[])
 {
@@ -67,8 +86,8 @@ int main(int argc, char *argv[])
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VTIME] = 2; // Inter-character timer unused
+    newtio.c_cc[VMIN] = 1;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -111,20 +130,58 @@ int main(int argc, char *argv[])
     // The whole buffer must be sent even with the '\n'.
     // buf[5] = '\n';
 
-    int bytes = write(fd, buf, BUF_SIZE);
-    printf("%d bytes written\n", bytes);
+    (void)signal(SIGALRM, alarmHandler);
+
+    while (alarmCount < 4)
+    {
+        if (alarmEnabled == FALSE)
+        {
+            int bytes = write(fd, buf, BUF_SIZE);
+            printf("%d bytes written\n", bytes);
 
     // Wait until all bytes have been written to the serial port
-    sleep(1);
+            sleep(1);
+            alarm(3); // Set alarm to be triggered in 3s
+            alarmEnabled = TRUE;
+        }
 
-    unsigned char buf2[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
+        unsigned char buf2[BUF_SIZE + 1] = {0};
+        int i = 0;
+        int bytes2 = read(fd, buf2, 1);
+        if(bytes2 == 0) continue;
 
-    
-        // Returns after 5 chars have been input
-        int bytes2 = read(fd, buf2, BUF_SIZE);
-        buf2[bytes] = '\0'; // Set end of string to '\0', so we can printf
+        while(buf2[0]!=0x7E){
+            bytes2 = read(fd, buf2, 1);
+        }
+        do{
+            i++;
+            bytes2 = read(fd, buf2, 1);
+            }while(buf2[i]!=0x7E);
+        buf2[i + 1] = '\0';
+        printf(":%s:%d\n", buf, i+1);
 
-printf("var = 0x%02X\n", buf2[2]);        
+        printf("var = 0x%02X\n", buf2[2]);   
+
+    }
+
+    alarm(0);
+
+    unsigned char buf2[BUF_SIZE + 1] = {0};
+    int i = 0;
+    int bytes2 = read(fd, buf2, 1);
+    if(bytes2 == 0) main(argc, argv);
+
+    while(buf2[0]!=0x7E){
+        bytes2 = read(fd, buf2, 1);
+    }
+    do{
+        i++;
+        bytes2 = read(fd, buf2, 1);
+        }while(buf2[i]!=0x7E);
+    buf2[i + 1] = '\0';
+    printf(":%s:%d\n", buf, i+1);
+
+    printf("var = 0x%02X\n", buf2[2]);        
     
 
     // Restore the old port settings
