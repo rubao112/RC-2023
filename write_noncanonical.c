@@ -27,6 +27,11 @@ volatile int STOP = FALSE;
 #define FALSE 0
 #define TRUE 1
 
+#define FLAG 0x7E
+#define A 0x03
+#define C0 0x00
+#define C1 0x40
+
 int alarmEnabled = FALSE;
 int alarmCount = 0;
 
@@ -39,6 +44,74 @@ void alarmHandler(int signal)
     alarmCount++;
 
     printf("Alarm #%d\n", alarmCount);
+}
+
+int llwrite(int fd, char * buffer, int length){
+    unsigned char buf[BUF_SIZE] = {0};
+
+    buf[0] = 0x7E;
+    buf[1] = 0x03;
+    buf[2] = 0x03;
+    buf[3] = buf[1] ^ buf[2];
+    buf[4] = 0x7E;
+
+    /*
+    for (int i = 0; i < BUF_SIZE; i++)
+    {
+        buf[i] = 'a' + i % 26;
+    }
+    */
+
+    // In non-canonical mode, '\n' does not end the writing.
+    // Test this condition by placing a '\n' in the middle of the buffer.
+    // The whole buffer must be sent even with the '\n'.
+    // buf[5] = '\n';
+
+    int readsCounter = 0;
+
+    int notRead = TRUE;
+
+    (void)signal(SIGALRM, alarmHandler);
+
+    while (readsCounter < 3 && notRead)
+    {
+        if (alarmEnabled == FALSE)
+        {
+            int bytes = write(fd, buf, BUF_SIZE);
+            printf("%d bytes written\n", bytes);
+
+            // Wait until all bytes have been written to the serial port
+            sleep(1);
+            alarm(3); // Set alarm to be triggered in 3s
+            alarmEnabled = TRUE;
+        }
+
+        unsigned char buf2[BUF_SIZE + 1] = {0};
+        int i = 0;
+        int bytes2 = read(fd, buf2, 1);
+        if (bytes2 != 1){
+            readsCounter++;
+            continue;
+        }
+
+        while (buf2[0] != 0x7E)
+        {
+            bytes2 = read(fd, buf2, 1);
+        }
+        do
+        {
+            i++;
+            bytes2 = read(fd, buf2, 1);
+        } while (buf2[i] != 0x7E);
+        buf2[i + 1] = '\0';
+        printf(":%s:%d\n", buf, i + 1);
+
+        printf("var = 0x%02X\n", buf2[2]);
+        readsCounter++;
+        notRead = FALSE;
+    }
+
+    alarm(0);
 }
 
 int main(int argc, char *argv[])
@@ -106,73 +179,9 @@ int main(int argc, char *argv[])
     }
 
     printf("New termios structure set\n");
+    char fake[10]={0x00,0x7E,0x05,0x7D, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16};
 
-    // Create string to send
-    unsigned char buf[BUF_SIZE] = {0};
-
-    buf[0] = 0x7E;
-    buf[1] = 0x03;
-    buf[2] = 0x03;
-    buf[3] = buf[1] ^ buf[2];
-    buf[4] = 0x7E;
-
-    /*
-    for (int i = 0; i < BUF_SIZE; i++)
-    {
-        buf[i] = 'a' + i % 26;
-    }
-    */
-
-    // In non-canonical mode, '\n' does not end the writing.
-    // Test this condition by placing a '\n' in the middle of the buffer.
-    // The whole buffer must be sent even with the '\n'.
-    // buf[5] = '\n';
-
-    int readsCounter = 0;
-
-    bool notRead = true;
-
-    (void)signal(SIGALRM, alarmHandler);
-
-    while (readsCounter < 3 && notRead)
-    {
-        if (alarmEnabled == FALSE)
-        {
-            int bytes = write(fd, buf, BUF_SIZE);
-            printf("%d bytes written\n", bytes);
-
-            // Wait until all bytes have been written to the serial port
-            sleep(1);
-            alarm(3); // Set alarm to be triggered in 3s
-            alarmEnabled = TRUE;
-        }
-
-        unsigned char buf2[BUF_SIZE + 1] = {0};
-        int i = 0;
-        int bytes2 = read(fd, buf2, 1);
-        if (bytes2 != 1){
-            readsCounter++;
-            continue;
-        }
-
-        while (buf2[0] != 0x7E)
-        {
-            bytes2 = read(fd, buf2, 1);
-        }
-        do
-        {
-            i++;
-            bytes2 = read(fd, buf2, 1);
-        } while (buf2[i] != 0x7E);
-        buf2[i + 1] = '\0';
-        printf(":%s:%d\n", buf, i + 1);
-
-        printf("var = 0x%02X\n", buf2[2]);
-        readsCounter++;
-        notRead = FALSE;
-    }
-
-    alarm(0);
+    llwrite(1, fake, 10);
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
