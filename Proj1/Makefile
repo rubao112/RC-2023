@@ -16,6 +16,9 @@ RX_SERIAL_PORT = /dev/ttyS11
 TX_FILE = penguin.gif
 RX_FILE = penguin-received.gif
 
+# Create the bin directory if it doesn't exist
+$(shell mkdir -p $(BIN))
+
 # Targets
 .PHONY: all
 all: $(BIN)/main $(BIN)/cable
