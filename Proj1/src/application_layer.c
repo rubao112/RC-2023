@@ -18,24 +18,25 @@ int status; /*TRANSMITTER | RECEIVER*/
 #define START_PACKET 0x02
 #define DATA_PACKET 0x01
 
-int sendControlPacket(int fd, unsigned char packetType, const char *filename) 
+int sendCPacket(int fd, unsigned char type, const char *filename) 
 {
-    FILE *file = fopen(filename, "rb");
-    fseek(file, 0L, SEEK_END);
-    int fileSize = ftell(file);
-    fclose(file);
-
-    unsigned char buffer[1000];
-    buffer[0] = packetType;
-    buffer[1] = 0x00;
-    buffer[2] = 0x02;
-    buffer[3] = fileSize >> 8;
-    buffer[4] = (unsigned char)fileSize;
-    buffer[5] = 0x01;
-    buffer[6] = strlen(filename);
-    strcpy(buffer + 7, filename);
-
-    llwrite(buffer, 7 + strlen(filename));
+    FILE *f = fopen(filename, "rb");
+    fseek(f, 0L, SEEK_END);
+    int sizeF = ftell(f);
+    fclose(f);
+    unsigned char buf[1024];
+    
+    buf[0] = t;
+    buf[1] = 0x00;
+    buf[2] = 0x02;
+    buf[3] = sizeF >> 8;
+    buf[4] = (unsigned char)sizeF;
+    buf[5] = 0x01;
+    buf[6] = strlen(filename);
+    
+    strcpy(buf + 7, filename);
+    llwrite(buf,strlen(filename) + 7);
+    
     return 0;
 }
 
@@ -94,7 +95,7 @@ int sendPacket(int fd, unsigned char packetType, const char *filename)
     switch (packetType) {
         case START_PACKET:
         case END_PACKET:
-            return sendControlPacket(fd, packetType, filename);
+            return sendCPacket(fd, packetType, filename);
         case DATA_PACKET:
             return sendDataPacket(fd, filename);
 
