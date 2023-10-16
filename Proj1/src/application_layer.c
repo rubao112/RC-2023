@@ -9,7 +9,8 @@
 #include <fcntl.h>
 #include "link_layer.h"
 
-struct applicationLayer{
+struct applicationLayer
+{
 int fileDescriptor; /*Descritor correspondente à porta série*/
 int status; /*TRANSMITTER | RECEIVER*/
 };
@@ -42,51 +43,54 @@ int sendCPacket(int fd, unsigned char type, const char *filename)
 
 int sendDataPacket(int fd, const char *filename) 
 {
-    FILE *file = fopen(filename, "rb");
-    int packetNumber = 0;
-    unsigned char buffer[1000];
+    FILE *f = fopen(filename, "rb");
+    unsigned char buf[1024];
     unsigned int bytesRead = 0;
-    while ((bytesRead = fread(buffer + 4, 1, 996, file)) > 0) {
-        buffer[0] = DATA_PACKET;
-        buffer[1] = packetNumber;
-        buffer[2] = bytesRead / 256;
-        buffer[3] = bytesRead % 256;
+    int packetNumber = 0;
 
-        if (llwrite(buffer, bytesRead + 4) == -1) {
-            printf("Max number of tries reached\n");
+    while ((bytesRead = fread(buf + 4, 1, 996, f)) > 0) 
+    {
+        buf[0] = DATA_PACKET;
+        buf[1] = packetNumber;
+        buf[2] = bytesRead / 256;
+        buf[3] = bytesRead % 256;
+
+        if (llwrite(buf, bytesRead + 4) == -1) 
+        {
+            printf("Maximum tries reached\n");
             exit(-1);
         }
         packetNumber++;
     }
 
-    fclose(file);
+    fclose(f);
     return 0;
 }
 
 int receivePacket(int fd, const char *filename) 
 {
-    unsigned char buffer[2000];
+    unsigned char buf[2000];
     int packetNumber = 0;
-    FILE *file;
+    FILE *f;
     unsigned int fileSize, appendSize, bytesRead;
     while (1) {
-        bytesRead = llread(buffer);
+        bytesRead = llread(buf);
 
-        if (buffer[0] == START_PACKET) {
-            file = fopen(filename, "wb");
-            fileSize = buffer[3] << 8 | buffer[4];
-        } else if (buffer[0] == DATA_PACKET && bytesRead > 0) {
-            appendSize = buffer[2] * 256 + buffer[3];
-            fwrite(buffer + 4, 1, appendSize, file);
-            if (buffer[1] == packetNumber) {
+        if (buf[0] == START_PACKET) {
+            f = fopen(filename, "wb");
+            fileSize = buf[3] << 8 | buf[4];
+        } else if (buf[0] == DATA_PACKET && bytesRead > 0) {
+            appendSize = buf[2] * 256 + buf[3];
+            fwrite(buf + 4, 1, appendSize, f);
+            if (buf[1] == packetNumber) {
                 packetNumber++;
             }
-        } else if (buffer[0] == END_PACKET) {
+        } else if (buf[0] == END_PACKET) {
             printf("END\n");
             break;
         }
     }
-    fclose(file);
+    fclose(f);
     return fd;
 }
 
