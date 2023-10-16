@@ -5,128 +5,125 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define DATA 0x01
-#define START 0x02
-#define END 0x03
+#define END_PACKET 0x03
+#define START_PACKET 0x02
+#define DATA_PACKET 0x01
 
-void applicationLayer(const char *serialPort, const char *role, int baudRate,
-                      int nTries, int timeout, const char *filename)
-{
-
+void applicationLayer(const char *port, const char *role, int baudRate,
+                      int retries, int timeout, const char *filename) {
     struct applicationLayer appLayer;
-    LinkLayerRole linkLayerRole;
-    linkLayerRole = (strcmp(role, "tx") == 0)? LlTx : LlRx;
+    LinkLayerRole linkRole;
+    linkRole = (strcmp(role, "tx") == 0) ? LlTx : LlRx;
     appLayer.status = (strcmp(role, "tx") == 0) ? 1 : 0;
     LinkLayer linkLayer;
     linkLayer.baudRate = baudRate;
-    linkLayer.nRetransmissions = nTries;
-    linkLayer.role = linkLayerRole;
-    strcpy( linkLayer.serialPort, serialPort);
+    linkLayer.nRetransmissions = retries;
+    linkLayer.role = linkRole;
+    strcpy(linkLayer.serialPort, port);
     linkLayer.timeout = timeout;
-    int fd = llopen(linkLayer);    
-    if(fd==-1) return;
+    int fd = llopen(linkLayer);
+    if (fd == -1)
+        return;
     appLayer.fileDescriptor = fd;
-    switch(appLayer.status){
-        case 0:
-            printf("Receiving file \n");
-            receivePacket(fd, filename);
+    switch (appLayer.status)
+    {   case 1:
+            printf("Sending file\n");
+            sendPacket(fd, START_PACKET, filename);
+            sendPacket(fd, DATA_PACKET, filename);
+            sendPacket(fd, END_PACKET, filename);
             break;
-        case 1:
-            printf("Sending file \n");
-            sendPacket(fd, 0x02, filename);
-            sendPacket(fd, 0x01, filename);
-            sendPacket(fd, 0x03, filename);
+        case 0:
+            printf("Receiving file\n");
+            receivePacket(fd, filename);
             break;
         default:
             printf("Invalid role\n");
-            
-
     }
 
     printf("END\n");
-    llclose(0, linkLayer);
-}
-int sendPacket(int fd ,unsigned char C, const char *filename)
+    llclose(0, linkLayer);}
+
+int sendPacket(int fd, unsigned char packetType, const char *filename) 
 {
-    switch(C)
-    {
-        case 0x01:
+    switch (packetType) {
+        case START_PACKET:
+        case END_PACKET:
+            return sendControlPacket(fd, packetType, filename);
+        case DATA_PACKET:
             return sendDataPacket(fd, filename);
-        case 0x02: case 0x03:
-            return sendControlPacket(fd, C, filename);
+
         default:
             return -1;
     }
 }
-int sendControlPacket(int fd, unsigned char C,const char* filename){
-        
-        FILE* fd_file = fopen(filename,"rb");
-        fseek(fd_file, 0L, SEEK_END);
-        int file_size = ftell(fd_file);
-        fclose(fd_file);
-        
-        unsigned char buffer[1000];
-        buffer[0] = C;
-        buffer[1] = 0x00;
-        buffer[2] = 0x02;
-        buffer[3] = file_size>>8;
-        buffer[4] = (unsigned char) file_size;
-        buffer[5] = 0x01;
-        buffer[6] = strlen(filename);
-        strcpy(buffer+7,filename);
 
+int sendControlPacket(int fd, unsigned char packetType, const char *filename) 
+{
+    FILE *file = fopen(filename, "rb");
+    fseek(file, 0L, SEEK_END);
+    int fileSize = ftell(file);
+    fclose(file);
 
-        llwrite(buffer,7+strlen(filename));
-        return 0;
-}
-int sendDataPacket(int fd, const char *filename){
-    FILE* fd_file = fopen(filename,"rb");
-    int n = 0;
     unsigned char buffer[1000];
-    unsigned int bytes_read = 0; 
-    while((bytes_read=fread(buffer+4,1,996, fd_file)) > 0){
-        buffer[0] = 0x01;
-        buffer[1] = n;
-        buffer[2] = bytes_read/256;
-        buffer[3] = bytes_read%256;
+    buffer[0] = packetType;
+    buffer[1] = 0x00;
+    buffer[2] = 0x02;
+    buffer[3] = fileSize >> 8;
+    buffer[4] = (unsigned char)fileSize;
+    buffer[5] = 0x01;
+    buffer[6] = strlen(filename);
+    strcpy(buffer + 7, filename);
 
-        if(llwrite(buffer,bytes_read+4)==-1){
-            printf("Max number tries reached ");
+    llwrite(buffer, 7 + strlen(filename));
+    return 0;
+}
+
+int sendDataPacket(int fd, const char *filename) 
+{
+    FILE *file = fopen(filename, "rb");
+    int packetNumber = 0;
+    unsigned char buffer[1000];
+    unsigned int bytesRead = 0;
+    while ((bytesRead = fread(buffer + 4, 1, 996, file)) > 0) {
+        buffer[0] = DATA_PACKET;
+        buffer[1] = packetNumber;
+        buffer[2] = bytesRead / 256;
+        buffer[3] = bytesRead % 256;
+
+        if (llwrite(buffer, bytesRead + 4) == -1) {
+            printf("Max number of tries reached\n");
             exit(-1);
         }
-        n++;
+        packetNumber++;
     }
 
-    fclose(fd_file);
+    fclose(file);
     return 0;
-    }
-    
-int receivePacket(int fd, const char * filename){
+}
+
+int receivePacket(int fd, const char *filename) 
+{
     unsigned char buffer[2000];
-    int n = 0, n_aux;
-    int offset_needed = 0;
-    FILE* gif_fd;
-    unsigned int file_size, append_size, sizeRead;
-    while(1){
-        sizeRead = llread(buffer);
-        
-        if(buffer[0] == START){
-            gif_fd = fopen(filename, "wb");
-            file_size = buffer[3]<<8 | buffer[4];
-        }
-        else if(buffer[0] == DATA && sizeRead > 0){
-            append_size = buffer[2]*256 + buffer[3];
-            fwrite(buffer+4, 1,append_size, gif_fd);  
-            if (buffer[1] == n){
-                n++;
+    int packetNumber = 0;
+    FILE *file;
+    unsigned int fileSize, appendSize, bytesRead;
+    while (1) {
+        bytesRead = llread(buffer);
+
+        if (buffer[0] == START_PACKET) {
+            file = fopen(filename, "wb");
+            fileSize = buffer[3] << 8 | buffer[4];
+        } else if (buffer[0] == DATA_PACKET && bytesRead > 0) {
+            appendSize = buffer[2] * 256 + buffer[3];
+            fwrite(buffer + 4, 1, appendSize, file);
+            if (buffer[1] == packetNumber) {
+                packetNumber++;
             }
-        }
-        else if(buffer[0] == END){
-            
+        } else if (buffer[0] == END_PACKET) {
             printf("END\n");
             break;
         }
     }
-    fclose(gif_fd);
+    fclose(file);
     return fd;
 }
