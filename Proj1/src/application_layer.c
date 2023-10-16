@@ -68,24 +68,29 @@ int sendDataPacket(int fd, const char *filename)
 }
 
 int receivePacket(int fd, const char *filename) 
-{
-    unsigned char buf[2000];
-    int packetNumber = 0;
+{   
     FILE *f;
-    unsigned int fileSize, appendSize, bytesRead;
-    while (1) {
+    unsigned int sizeF, addSize, bytesRead;
+    unsigned char buf[2048];
+    int packetNumber = 0;
+   
+    while (true) {
         bytesRead = llread(buf);
 
-        if (buf[0] == START_PACKET) {
+        if (buf[0] == START_PACKET) 
+        {
             f = fopen(filename, "wb");
-            fileSize = buf[3] << 8 | buf[4];
-        } else if (buf[0] == DATA_PACKET && bytesRead > 0) {
-            appendSize = buf[2] * 256 + buf[3];
-            fwrite(buf + 4, 1, appendSize, f);
-            if (buf[1] == packetNumber) {
+            sizeF = buf[3] << 8 | buf[4];
+        } else if (bytesRead > 0 && buf[0] == DATA_PACKET) 
+        {
+            addSize = buf[2] * 256 + buf[3];
+            fwrite(buf + 4, 1, addSize, f);
+            if (buf[1] == packetNumber) 
+            {
                 packetNumber++;
             }
-        } else if (buf[0] == END_PACKET) {
+        } else if (buf[0] == END_PACKET)
+        {
             printf("END\n");
             break;
         }
