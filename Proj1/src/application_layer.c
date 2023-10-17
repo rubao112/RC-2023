@@ -19,7 +19,7 @@ int status; /*TRANSMITTER | RECEIVER*/
 #define START_PACKET 0x02
 #define DATA_PACKET 0x01
 
-int sendCPacket(int fd, unsigned char type, const char *filename) 
+int sendCPacket(int fd, unsigned char packetType, const char *filename) 
 {
     FILE *f = fopen(filename, "rb");
     fseek(f, 0L, SEEK_END);
@@ -39,6 +39,22 @@ int sendCPacket(int fd, unsigned char type, const char *filename)
     llwrite(buf,strlen(filename) + 7);
     
     return 0;
+}
+
+int sendPacket(int fd, unsigned char packetType, const char *filename) 
+{
+    switch (packetType) {
+        case START_PACKET:
+        
+        case END_PACKET:
+            return sendCPacket(fd, packetType, filename);
+        
+        case DATA_PACKET:
+            return sendDataPacket(fd, filename);
+
+        default:
+            return -1;
+    }
 }
 
 int sendDataPacket(int fd, const char *filename) 
@@ -97,20 +113,6 @@ int receivePacket(int fd, const char *filename)
     }
     fclose(f);
     return fd;
-}
-
-int sendPacket(int fd, unsigned char packetType, const char *filename) 
-{
-    switch (packetType) {
-        case START_PACKET:
-        case END_PACKET:
-            return sendCPacket(fd, packetType, filename);
-        case DATA_PACKET:
-            return sendDataPacket(fd, filename);
-
-        default:
-            return -1;
-    }
 }
 
 void applicationLayer(const char *port, const char *role, int baudRate,
