@@ -111,40 +111,54 @@ int receivePacket(int fd, const char *filename)
             break;
         }
     }
+    
     fclose(f);
     return fd;
 }
 
 void applicationLayer(const char *port, const char *role, int baudRate,
-                      int retries, int timeout, const char *filename) {
-    struct applicationLayer appLayer;
+                      int retries, int timeout, const char *filename) 
+{
+    struct applicationLayer applicationLayer;
+    
     LinkLayerRole linkRole;
     linkRole = (strcmp(role, "tx") == 0) ? LlTx : LlRx;
-    appLayer.status = (strcmp(role, "tx") == 0) ? 1 : 0;
+    
+    applicationLayer.status = (strcmp(role, "tx") == 0) ? 1 : 0;
+    
     LinkLayer linkLayer;
+    linkLayer.role = linkRole;
     linkLayer.baudRate = baudRate;
     linkLayer.nRetransmissions = retries;
-    linkLayer.role = linkRole;
     strcpy(linkLayer.serialPort, port);
     linkLayer.timeout = timeout;
+    
     int fd = llopen(linkLayer);
+    
     if (fd == -1)
         return;
-    appLayer.fileDescriptor = fd;
-    switch (appLayer.status)
-    {   case 1:
+    
+    applicationLayer.fileDescriptor = fd;
+    
+    switch (applicationLayer.status)
+    {   
+        case 1:
             printf("Sending file\n");
             sendPacket(fd, START_PACKET, filename);
             sendPacket(fd, DATA_PACKET, filename);
             sendPacket(fd, END_PACKET, filename);
             break;
+        
         case 0:
             printf("Receiving file\n");
             receivePacket(fd, filename);
             break;
+        
         default:
             printf("Invalid role\n");
+        
     }
 
     printf("END\n");
     llclose(0, linkLayer);}
+}
