@@ -26,12 +26,14 @@ int sendCPacket(int fd, unsigned char packetType, const char *filename)
     int sizeF = ftell(f);
     fclose(f);
     unsigned char buf[1024];
+    unsigned char b3 = sizeF >> 8;
+    unsigned char b4 = (unsigned char)sizeF;
     
-    buf[0] = t;
+    buf[0] = packetType;
     buf[1] = 0x00;
     buf[2] = 0x02;
-    buf[3] = sizeF >> 8;
-    buf[4] = (unsigned char)sizeF;
+    buf[3] = b3;
+    buf[4] = b4;
     buf[5] = 0x01;
     buf[6] = strlen(filename);
     
@@ -64,7 +66,7 @@ int sendDataPacket(int fd, const char *filename)
     unsigned int bytesRead = 0;
     int packetNumber = 0;
 
-    while ((bytesRead = fread(buf + 4, 1, 996, f)) > 0) 
+    while ((bytesRead = fread(buf + 4, 1, 1020, f)) > 0) 
     {
         buf[0] = DATA_PACKET;
         buf[1] = packetNumber;
@@ -90,7 +92,7 @@ int receivePacket(int fd, const char *filename)
     unsigned char buf[2048];
     int packetNumber = 0;
    
-    while (true) {
+    while (1) {
         bytesRead = llread(buf);
 
         if (buf[0] == START_PACKET) 
@@ -107,7 +109,7 @@ int receivePacket(int fd, const char *filename)
             }
         } else if (buf[0] == END_PACKET)
         {
-            printf("END\n");
+            printf("ENDING\n");
             break;
         }
     }
@@ -160,5 +162,6 @@ void applicationLayer(const char *port, const char *role, int baudRate,
     }
 
     printf("END\n");
-    llclose(0, linkLayer);}
+    llclose(0, linkLayer);
 }
+
