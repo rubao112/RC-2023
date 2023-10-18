@@ -333,7 +333,6 @@ void receiveACK(stateMachine* state, unsigned char byte, unsigned char * ack, in
 int llwrite(const unsigned char *buf, int bufSize) 
 {
     state = START;
-    int done = FALSE;       // Flag to indicate if data is sent successfully
     int attemptNumber = 0;   // Counter for retry attempts
     signal(SIGALRM, alarmHandler); // Register the alarm signal handler
     state = START;
