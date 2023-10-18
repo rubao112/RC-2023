@@ -37,29 +37,13 @@ int sendCPacket(int fd, unsigned char packetType, const char *filename)
     buf[5] = 0x01;
     buf[6] = strlen(filename);
     
-    strcpy(buf + 7, filename);
+    memcpy(buf + 7, filename, strlen(filename));
     llwrite(buf,strlen(filename) + 7);
     
     return 0;
 }
 
-int sendPacket(int fd, unsigned char packetType, const char *filename) 
-{
-    switch (packetType) {
-        case START_PACKET:
-        
-        case END_PACKET:
-            return sendCPacket(fd, packetType, filename);
-        
-        case DATA_PACKET:
-            return sendDataPacket(fd, filename);
-
-        default:
-            return -1;
-    }
-}
-
-int sendDataPacket(int fd, const char *filename) 
+int sendDPacket(int fd, const char *filename) 
 {
     FILE *f = fopen(filename, "rb");
     unsigned char buf[1024];
@@ -85,10 +69,26 @@ int sendDataPacket(int fd, const char *filename)
     return 0;
 }
 
+int sendPacket(int fd, unsigned char packetType, const char *filename) 
+{
+    switch (packetType) {
+        case START_PACKET:
+        
+        case END_PACKET:
+            return sendCPacket(fd, packetType, filename);
+        
+        case DATA_PACKET:
+            return sendDPacket(fd, filename);
+
+        default:
+            return -1;
+    }
+}
+
 int receivePacket(int fd, const char *filename) 
 {   
     FILE *f;
-    unsigned int sizeF, addSize, bytesRead;
+    unsigned int addSize, bytesRead;
     unsigned char buf[2048];
     int packetNumber = 0;
    
@@ -98,7 +98,6 @@ int receivePacket(int fd, const char *filename)
         if (buf[0] == START_PACKET) 
         {
             f = fopen(filename, "wb");
-            sizeF = buf[3] << 8 | buf[4];
         } else if (bytesRead > 0 && buf[0] == DATA_PACKET) 
         {
             addSize = buf[2] * 256 + buf[3];
@@ -162,6 +161,6 @@ void applicationLayer(const char *port, const char *role, int baudRate,
     }
 
     printf("END\n");
-    llclose(0, linkLayer);
+    llclose(0);
 }
 
