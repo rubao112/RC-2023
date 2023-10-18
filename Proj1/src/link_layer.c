@@ -98,6 +98,9 @@ void determineState(stateMachine *state, char byte, int user)
             // Any other byte, revert back to the START state
             else *state = START;
             break;
+
+        default:
+            break;
     }
 }
 
@@ -320,6 +323,8 @@ void receiveACK(stateMachine* state, unsigned char byte, unsigned char * ack, in
                 *ack = FALSE;
                 *state = START;
             }
+            break;
+        default:
             break;
     }
 }
@@ -544,6 +549,8 @@ int receiveData(unsigned char *packet, int sn, size_t *size_read)
                         packet[i] = received;
                         i++;
                     }
+                    break;
+                default:
                     break;
             }
         }
