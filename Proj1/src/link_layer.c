@@ -324,6 +324,7 @@ void receiveACK(stateMachine* state, unsigned char byte, unsigned char * ack, in
                 *state = START;
             }
             break;
+            
         default:
             break;
     }
@@ -549,6 +550,7 @@ int receiveData(unsigned char *packet, int sn, size_t *size_read)
                         i++;
                     }
                     break;
+
                 default:
                     break;
             }
@@ -640,6 +642,9 @@ void determineStateDISC(stateMachine *state, char byte)
         case BCC_NORMAL:
             if(byte == FLAG)  *state = DONE;
             else *state = START;
+            break;
+
+        default:
             break;
     }
 }
