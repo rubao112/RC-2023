@@ -713,7 +713,7 @@ void DISCStateDetermine(stateMachine *state, char byte)
 }
 
 // Closes the logical link layer communication.
-int llclose(int statistics, LinkLayer linkLayer)
+int llclose(int statistics)
 {
     int bytesNum = 0;
     unsigned char aux = 0;
