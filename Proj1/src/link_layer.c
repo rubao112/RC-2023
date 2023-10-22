@@ -194,6 +194,7 @@ int llopen(LinkLayer connectionParameters)
             {
                 printf("%02X ", buf[i]); // Print each element of message as a hexadecimal value
             }
+            printf("\n");
             alarm(connectionParameters.timeout);
             alarmOn = TRUE;
             printf("Attempt nº%d\n", alarmCount);
