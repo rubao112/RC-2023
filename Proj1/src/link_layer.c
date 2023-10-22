@@ -17,49 +17,49 @@ typedef enum
 // Various constants and macros
 #define C_RECEIVER 0x07
 #define FALSE 0
-#define SET_SIZE 5
+#define TRUE 1
+#define SIZE_SET 5
 #define RECEIVER 0
 #define BCC(n, m) (n ^ m)
 #define A 0x03
-#define UA_SIZE 5
+#define SIZE_UA 5
 #define _POSIX_SOURCE 1 // POSIX compliant source
 #define F 0x7e
-#define TRUE 1
 #define NACK(n) ((n) << 7 | 0x01)
+#define ACK(n) ((n) << 7 | 0x05)
 #define ESC 0x7D
 #define TRANSMITER 1
-#define ACK(n) ((n) << 7 | 0x05)
 #define FLAG 0x7e
 #define C 0x03
-#define REPEATED_MESSAGE 2
+#define REPEATED_MSG_CODE 2
 
 stateMachine state;
 int fd;     // file descriptor
-int sn = 0; // sequence number
-int failed = 0;
-int alarm_count = 0;
-int alarm_enabled;
+int sequenceNum = 0;
+int hasFailed = 0;
+int alarmCount = 0;
+int alarmOn;
 
 volatile int STOP = FALSE;
-struct termios oldtio; // old terminal IO settings
+struct termios oldTermIO; // old terminal IO settings
 
 int nRetransmissions = 0;
-LinkLayer genLinkLayer;
+LinkLayer linkLayer;
 
-// Handler for alarm signal
-void alarmHandler(int signal)
+// Manager for alarm signal
+void alarmManager(int signal)
 {
-    printf("<Receiver didn't Answer>\n");
-    alarm_enabled = FALSE;
-    alarm_count++;
-    failed = 1;
+    printf("<No answer from receiving end>\n");
+    alarmOn = FALSE;
+    alarmCount++;
+    hasFailed = 1;
 }
 
 // Determine the current state of the state machine
-void determineState(stateMachine *state, char byte, int user)
+void stateDetermine(stateMachine *state, char byte, int user)
 {
-    unsigned char A_FLAG = 0x03;                 // Address flag constant
-    unsigned char C_FLAG = (user) ? 0x07 : 0x03; // Control flag constant, varies based on user role (transmitter or receiver)
+    unsigned char FLAG_A = 0x03;                 // Address flag constant
+    unsigned char FLAG_C = (user) ? 0x07 : 0x03; // Control flag constant, varies based on user role (transmitter or receiver)
 
     // Switch through the different states of the state machine
     switch (*state)
@@ -74,8 +74,8 @@ void determineState(stateMachine *state, char byte, int user)
         // If another FLAG is received, stay in FLAG_RCV state
         if (byte == FLAG)
             *state = FLAG_RCV;
-        // If A_FLAG (address byte) is received, transition to the A_RCV state
-        else if (byte == A_FLAG)
+        // If FLAG_A (address byte) is received, transition to the A_RCV state
+        else if (byte == FLAG_A)
             *state = A_RCV;
         // Any other byte, revert back to the START state
         else
@@ -86,8 +86,8 @@ void determineState(stateMachine *state, char byte, int user)
         // If FLAG is received, transition to the FLAG_RCV state
         if (byte == FLAG)
             *state = FLAG_RCV;
-        // If C_FLAG (control byte) is received, transition to the C_RCV state
-        else if (byte == C_FLAG)
+        // If FLAG_C (control byte) is received, transition to the C_RCV state
+        else if (byte == FLAG_C)
             *state = C_RCV;
         // Any other byte, revert back to the START state
         else
@@ -99,7 +99,7 @@ void determineState(stateMachine *state, char byte, int user)
         if (byte == FLAG)
             *state = FLAG_RCV;
         // If BCC (checksum of address and control bytes) is received, transition to the BCC_NORMAL state
-        else if (byte == BCC(A_FLAG, C_FLAG))
+        else if (byte == BCC(FLAG_A, FLAG_C))
             *state = BCC_NORMAL;
         // Any other byte, revert back to the START state
         else
@@ -129,10 +129,10 @@ int llopen(LinkLayer connectionParameters)
     struct sigaction action;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
-    action.sa_handler = alarmHandler;
+    action.sa_handler = alarmManager;
     sigaction(SIGALRM, &action, NULL);
-    struct termios newtio;
-    genLinkLayer = connectionParameters;
+    struct termios newTermIO;
+    linkLayer = connectionParameters;
 
     // Open the serial port with read/write access
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
@@ -144,32 +144,32 @@ int llopen(LinkLayer connectionParameters)
     }
 
     // Save current settings of the port
-    if (tcgetattr(fd, &oldtio) == -1)
+    if (tcgetattr(fd, &oldTermIO) == -1)
     {
         perror("tcgetattr");
         exit(-1);
     }
 
     // Clear the structure for the new port settings
-    memset(&newtio, 0, sizeof(newtio));
+    memset(&newTermIO, 0, sizeof(newTermIO));
 
     // Set parameters for the serial port connection
-    newtio.c_iflag = IGNPAR;
-    newtio.c_cflag = connectionParameters.baudRate | CS8 | CLOCAL | CREAD;
-    newtio.c_lflag = 0;
-    newtio.c_oflag = 0;
-    newtio.c_cc[VTIME] = 1; // Inter-character timer is not used
-    newtio.c_cc[VMIN] = 0;  // Read blocks until a character arrives
+    newTermIO.c_iflag = IGNPAR;
+    newTermIO.c_cflag = connectionParameters.baudRate | CS8 | CLOCAL | CREAD;
+    newTermIO.c_lflag = 0;
+    newTermIO.c_oflag = 0;
+    newTermIO.c_cc[VTIME] = 1; // Inter-character timer is not used
+    newTermIO.c_cc[VMIN] = 0;  // Read blocks until a character arrives
     tcflush(fd, TCIOFLUSH);
 
     // Apply new settings to the port
-    if (tcsetattr(fd, TCSANOW, &newtio) == -1)
+    if (tcsetattr(fd, TCSANOW, &newTermIO) == -1)
     {
         perror("tcsetattr");
         exit(-1);
     }
 
-    printf("New termios structure set\n");
+    printf("Set new TermIOs struct\n");
 
     // If operating in transmitter mode
     if (connectionParameters.role == LlTx)
@@ -181,48 +181,48 @@ int llopen(LinkLayer connectionParameters)
         buf[2] = C;
         buf[3] = BCC(buf[1], buf[2]);
         buf[4] = F;
-        failed = 0;
-        int bytes = 0;
+        hasFailed = 0;
+        int bytesNum = 0;
 
         // Attempt to send the SET message and wait for UA response
         do
         {
             STOP = FALSE;
-            bytes = write(fd, buf, SET_SIZE);
+            bytesNum = write(fd, buf, SIZE_SET);
             printf("Sent SET: ");
-            for (int i = 0; i < bytes; i++)
+            for (int i = 0; i < bytesNum; i++)
             {
-                printf("%02X ", buf[i]); // Print each element of msg as a hexadecimal value
+                printf("%02X ", buf[i]); // Print each element of message as a hexadecimal value
             }
             alarm(connectionParameters.timeout);
-            alarm_enabled = TRUE;
-            printf("Attempt %d\n", alarm_count);
+            alarmOn = TRUE;
+            printf("Attempt nº%d\n", alarmCount);
             state = START;
-            failed = 0;
+            hasFailed = 0;
             unsigned char aux = 0;
 
             while (STOP == FALSE)
             {
-                bytes = read(fd, &aux, 1);
-                if (bytes > 0)
+                bytesNum = read(fd, &aux, 1);
+                if (bytesNum > 0)
                 {
-                    determineState(&state, aux, 1);
+                    stateDetermine(&state, aux, 1);
                 }
-                if (state == DONE || failed == 1)
+                if (state == DONE || hasFailed == 1)
                 {
                     alarm(0);
                     STOP = TRUE;
                 }
             }
-        } while (alarm_count < connectionParameters.nRetransmissions && state != DONE);
+        } while (alarmCount < connectionParameters.nRetransmissions && state != DONE);
 
         if (state == DONE)
         {
-            printf("UA Received\n");
+            printf("Received UA\n");
         }
         else
         {
-            printf("UA Not Received\n");
+            printf("Didn´t receive UA\n");
             return -1;
         }
     }
@@ -236,7 +236,7 @@ int llopen(LinkLayer connectionParameters)
         while (STOP == FALSE)
         {
             read(fd, &aux, 1);
-            determineState(&state, aux, 0);
+            stateDetermine(&state, aux, 0);
 
             if (state == DONE)
                 STOP = TRUE;
@@ -245,18 +245,18 @@ int llopen(LinkLayer connectionParameters)
         printf("Received SET\n");
 
         // Prepare and send a UA message in response
-        unsigned char msg[256] = {0};
-        msg[0] = FLAG;
-        msg[1] = 0x03;
-        msg[2] = 0x07;
-        msg[3] = BCC(0x03, 0x07);
-        msg[4] = FLAG;
+        unsigned char message[256] = {0};
+        message[0] = FLAG;
+        message[1] = 0x03;
+        message[2] = 0x07;
+        message[3] = BCC(0x03, 0x07);
+        message[4] = FLAG;
 
-        int bytes = write(fd, msg, UA_SIZE);
+        int bytesNum = write(fd, message, SIZE_UA);
         printf("Sent UA: ");
-        for (int i = 0; i < bytes; i++)
+        for (int i = 0; i < bytesNum; i++)
         {
-            printf("%02X ", msg[i]); // Print each element of msg as a hexadecimal value
+            printf("%02X ", message[i]); // Print each element of message as a hexadecimal value
         }
         printf("\n");
     }
@@ -265,7 +265,7 @@ int llopen(LinkLayer connectionParameters)
 }
 
 // Process received ACK messages
-void receiveACK(stateMachine *state, unsigned char byte, unsigned char *ack, int sn)
+void receiveACK(stateMachine *state, unsigned char byte, unsigned char *ack, int sequenceNum)
 {
     switch (*state)
     {
@@ -302,16 +302,16 @@ void receiveACK(stateMachine *state, unsigned char byte, unsigned char *ack, int
             *state = FLAG_RCV;
         }
         // If the byte matches the expected ACK, transition to the C_RCV state.
-        else if (byte == ACK(sn))
+        else if (byte == ACK(sequenceNum))
         {
             *state = C_RCV;
-            *ack = ACK(sn);
+            *ack = ACK(sequenceNum);
         }
         // If the byte matches the expected NACK, also transition to the C_RCV state.
-        else if (byte == NACK(sn))
+        else if (byte == NACK(sequenceNum))
         {
             *state = C_RCV;
-            *ack = NACK(sn);
+            *ack = NACK(sequenceNum);
         }
         // Any other byte, revert to the START state.
         else
@@ -362,32 +362,31 @@ void receiveACK(stateMachine *state, unsigned char byte, unsigned char *ack, int
 // Sends a data buffer over the link layer, handles byte stuffing, and acknowledges receipt.
 int llwrite(const unsigned char *buf, int bufSize)
 {
+    signal(SIGALRM, alarmManager); // Register the alarm signal manager
     state = START;
-    int attemptNumber = 0;         // Counter for retry attempts
-    signal(SIGALRM, alarmHandler); // Register the alarm signal handler
-    state = START;
+    int attemptNum = 0;         // Counter for retry attempts
 
     // Count bytes that need stuffing
-    unsigned int count = 0;
+    unsigned int counter = 0;
     for (int i = 0; i < bufSize; i++)
     {
         if (buf[i] == FLAG || buf[i] == ESC)
         {
-            count++;
+            counter++;
         }
     }
 
-    unsigned int size = bufSize + 6 + count; // Calculate total size after stuffing
-    unsigned char msg[size];
-    memset(msg, 0, size); // Initialize the message buffer
+    unsigned int size = bufSize + 6 + counter; // Calculate total size after stuffing
+    unsigned char message[size];
+    memset(message, 0, size); // Initialize the message buffer
 
     // Frame header
-    msg[0] = FLAG;
-    msg[1] = A;
-    msg[2] = sn << 7;
-    msg[3] = BCC(A, sn << 7);
+    message[0] = FLAG;
+    message[1] = A;
+    message[2] = sequenceNum << 7;
+    message[3] = BCC(A, sequenceNum << 7);
 
-    unsigned int i = 0, BCC2 = 0;
+    unsigned int BCC2 = 0, i = 0;
 
     // Byte stuffing for the message
     for (int j = 0; j < bufSize; j++)
@@ -395,63 +394,63 @@ int llwrite(const unsigned char *buf, int bufSize)
         switch (buf[j])
         {
         case ESC:
-            msg[j + i + 4] = ESC;
-            msg[j + i + 5] = ESC;
+            message[i + j + 4] = ESC;
+            message[i + j + 5] = ESC;
             BCC2 = BCC(BCC2, ESC);
             i++;
             break;
 
         case FLAG:
-            msg[j + i + 4] = ESC;
-            msg[j + i + 5] = FLAG;
+            message[i + j + 4] = ESC;
+            message[i + j + 5] = FLAG;
             BCC2 = BCC(BCC2, FLAG);
             i++;
             break;
 
         default:
-            msg[j + i + 4] = buf[j];
+            message[i + j + 4] = buf[j];
             BCC2 = BCC(BCC2, buf[j]);
         }
     }
 
-    msg[i + bufSize + 4] = BCC2; // Frame footer with BCC and FLAG
-    msg[i + bufSize + 5] = FLAG;
+    message[i + bufSize + 4] = BCC2; // Frame footer with BCC and FLAG
+    message[i + bufSize + 5] = FLAG;
 
     STOP = FALSE;
-    alarm_enabled = FALSE;
+    alarmOn = FALSE;
 
     // Loop until the frame is acknowledged or the maximum number of attempts is reached
-    while (state != DONE && STOP != TRUE)
-    {
-        unsigned char received; // Byte read from the link
+    while (STOP != TRUE && state != DONE)
+    { 
         unsigned char ack;      // ACK byte
+        unsigned char receivedByte; // Byte read from the link
 
         // Send the frame if the alarm is not already set
-        if (alarm_enabled == FALSE)
+        if (alarmOn == FALSE)
         {
-            if (attemptNumber > genLinkLayer.nRetransmissions)
+            if (attemptNum > linkLayer.nRetransmissions)
             {
                 return -1; // Max attempts reached
             }
-            attemptNumber++;
+            attemptNum++;
 
-            write(fd, msg, size);          // Send the message
-            signal(SIGALRM, alarmHandler); // Set the alarm signal handler again
+            write(fd, message, size);          // Send the message
+            signal(SIGALRM, alarmManager); // Set the alarm signal manager again
             alarm(3);                      // Set an alarm for 3 seconds
-            alarm_enabled = TRUE;
+            alarmOn = TRUE;
         }
 
         // Read a byte from the link
-        unsigned int bytes = read(fd, &received, 1);
+        unsigned int bytesNum = read(fd, &receivedByte, 1);
 
-        if (bytes > 0)
+        if (bytesNum > 0)
         {
-            receiveACK(&state, received, &ack, 1 - sn);
+            receiveACK(&state, receivedByte, &ack, 1 - sequenceNum);
 
             // Check if the acknowledgment is as expected
-            if (state == DONE && ack == ACK(1 - sn))
+            if (state == DONE && ack == ACK(1 - sequenceNum))
             {
-                sn = 1 - sn;
+                sequenceNum = 1 - sequenceNum;
                 alarm(0);    // Cancel the alarm
                 STOP = TRUE; // Stop the loop
                 printf("RECEIVED ACK aka RR...\n");
@@ -460,7 +459,7 @@ int llwrite(const unsigned char *buf, int bufSize)
             else if (state == DONE)
             {
                 printf("RECEIVED NACK aka RREJ...\n");
-                write(fd, msg, size);
+                write(fd, message, size);
                 state = START;
             }
         }
@@ -473,36 +472,56 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 
 // Function to process received data and handle byte stuffing return true when it must return ack, and false for nack
-int receiveData(unsigned char *packet, int sn, size_t *size_read)
+int receiveData(unsigned char *packet, int sequenceNum, size_t *size_read)
 {
     state = START;
-    unsigned char C_REPLY = (1 - sn) << 7;
-    unsigned char C_CONTROL = sn << 7;          // Construct control byte using sequence number
+    unsigned char REPLY_C = (1 - sequenceNum) << 7;
+    unsigned char CONTROL_C = sequenceNum << 7;          // Construct control byte using sequence number
     unsigned int BCC2 = 0, i = 0, stuffing = 0; // Stuffing flag: set to 1 every time an ESC is encountered
 
     // Keep processing bytes until the end flag is received
     while (state != DONE)
     {
-        unsigned char received;
-        unsigned int bytes = read(fd, &received, 1);
+        unsigned char receivedByte;
+        unsigned int bytesNum = read(fd, &receivedByte, 1);
 
-        if (bytes > 0)
+        if (bytesNum > 0)
         {
             switch (state)
             {
             case START:
-                if (received == FLAG)
+                if (receivedByte == FLAG)
                 {
                     state = FLAG_RCV;
                 }
                 break;
 
-            case FLAG_RCV:
-                if (received == FLAG)
+            case A_RCV:
+                if (receivedByte == FLAG)
                 {
                     state = FLAG_RCV;
                 }
-                else if (received == A)
+                else if (receivedByte == CONTROL_C)
+                {
+                    state = C_RCV;
+                }
+                // Handling case of receiving repeated message and waiting for the next one
+                else if (REPLY_C == receivedByte)
+                {
+                    return REPEATED_MSG_CODE; // Return code indicating a repeated message was received
+                }
+                else
+                {
+                    state = START;
+                }
+                break;
+
+            case FLAG_RCV:
+                if (receivedByte == FLAG)
+                {
+                    state = FLAG_RCV;
+                }
+                else if (receivedByte == A)
                 {
                     state = A_RCV;
                 }
@@ -512,32 +531,12 @@ int receiveData(unsigned char *packet, int sn, size_t *size_read)
                 }
                 break;
 
-            case A_RCV:
-                if (received == FLAG)
-                {
-                    state = FLAG_RCV;
-                }
-                else if (received == C_CONTROL)
-                {
-                    state = C_RCV;
-                }
-                // Handling case of receiving repeated message and waiting for the next one
-                else if (C_REPLY == received)
-                {
-                    return REPEATED_MESSAGE; // Return code indicating a repeated message was received
-                }
-                else
-                {
-                    state = START;
-                }
-                break;
-
             case C_RCV:
-                if (received == FLAG)
+                if (receivedByte == FLAG)
                 {
                     state = FLAG_RCV;
                 }
-                else if (received == BCC(A, C_CONTROL))
+                else if (receivedByte == BCC(A, CONTROL_C))
                 {
                     state = BCC_DATA;
                 }
@@ -551,29 +550,29 @@ int receiveData(unsigned char *packet, int sn, size_t *size_read)
             case BCC_DATA:
                 if (!stuffing)
                 {
-                    if (received == FLAG)
+                    if (receivedByte == FLAG)
                     {
                         state = DONE;
                         BCC2 = BCC(BCC2, packet[i - 1]);
                         *size_read = i - 1;             // Update the size of the read data
                         return (BCC2 == packet[i - 1]); // Return TRUE if BCC matches, otherwise FALSE
                     }
-                    else if (received == ESC)
+                    else if (receivedByte == ESC)
                     {
                         stuffing = TRUE; // Set the stuffing flag if ESC is encountered
                     }
                     else
                     {
-                        BCC2 = BCC(BCC2, received);
-                        packet[i] = received;
+                        BCC2 = BCC(BCC2, receivedByte);
+                        packet[i] = receivedByte;
                         i++;
                     }
                 }
                 else
                 {
                     stuffing = FALSE; // Reset the stuffing flag
-                    BCC2 = BCC(BCC2, received);
-                    packet[i] = received;
+                    BCC2 = BCC(BCC2, receivedByte);
+                    packet[i] = receivedByte;
                     i++;
                 }
                 break;
@@ -590,39 +589,39 @@ int receiveData(unsigned char *packet, int sn, size_t *size_read)
 // Reads data from the link layer and acknowledges the received data.
 int llread(unsigned char *packet)
 {
-    int reply;
+    int readStatus;
     size_t size_read;
 
     // Continuously try to receive data until successful
-    while ((reply = receiveData(packet, sn, &size_read)) != TRUE)
+    while ((readStatus = receiveData(packet, sequenceNum, &size_read)) != TRUE)
     {
         // If the reply indicates an error (e.g., checksum mismatch)
-        if (reply == 0)
+        if (readStatus == 0)
         {
-            printf("Sending NACK or RRej...\n");
+            printf("Sending RRej or NACK\n");
 
             // Send a NACK (negative acknowledgment)
-            unsigned char C_NACK = NACK(1 - sn);
-            unsigned char buf[] = {FLAG, A, C_NACK, BCC(A, C_NACK), F};
+            unsigned char NACK_C = NACK(1 - sequenceNum);
+            unsigned char buf[] = {FLAG, A, NACK_C, BCC(A, NACK_C), F};
             write(fd, buf, 5);
         }
         // If the received message is a duplicate (e.g., retransmission)
         else
         {
-            printf("Sending ACK because repeated message...\n");
+            printf("Repeated message, sending ACK\n");
 
             // Send an ACK to prevent further retransmissions
-            unsigned char C_ACK = ACK(sn);
-            unsigned char buf[] = {FLAG, A, C_ACK, BCC(A, C_ACK), F};
+            unsigned char ACK_C = ACK(sequenceNum);
+            unsigned char buf[] = {FLAG, A, ACK_C, BCC(A, ACK_C), F};
             write(fd, buf, 5);
         }
     }
 
     // Once data is received correctly, send an ACK
-    printf("Sending ACK everything in order...\n");
-    sn = 1 - sn; // Toggle the sequence number
-    unsigned char C_ACK = ACK(sn);
-    unsigned char buf[] = {FLAG, A, C_ACK, BCC(A, C_ACK), F};
+    printf("Everything in order, sending ACK\n");
+    sequenceNum = 1 - sequenceNum; // Toggle the sequence number
+    unsigned char ACK_C = ACK(sequenceNum);
+    unsigned char buf[] = {FLAG, A, ACK_C, BCC(A, ACK_C), F};
     write(fd, buf, 5);
 
     return size_read;
@@ -631,11 +630,11 @@ int llread(unsigned char *packet)
 // LLCLOSE
 
 // Determine the next state of the state machine based on the received byte.
-void determineStateDISC(stateMachine *state, char byte)
+void DISCStateDetermine(stateMachine *state, char byte)
 {
     // Define the flags for the state transitions
-    unsigned char A_FLAG = 0x03;
-    unsigned char C_FLAG = 0x0B;
+    unsigned char FLAG_C = 0x0B;
+    unsigned char FLAG_A = 0x03;
 
     // Determine the current state and process the incoming byte
     switch (*state)
@@ -643,44 +642,69 @@ void determineStateDISC(stateMachine *state, char byte)
     // Waiting for the initial FLAG byte
     case START:
         if (byte == FLAG)
+        {
             *state = FLAG_RCV;
+        }
         break;
 
-    // A FLAG byte has been received and waiting for the A_FLAG
+    // A FLAG byte has been received and waiting for the FLAG_A
     case FLAG_RCV:
         if (byte == FLAG)
+        {
             *state = FLAG_RCV;
-        else if (byte == A_FLAG)
+        }
+        else if (byte == FLAG_A)
+        {
             *state = A_RCV;
+        }
         else
+        {
             *state = START;
+        }
         break;
 
-    // A_FLAG has been received, waiting for C_FLAG
-    case A_RCV:
-        if (byte == FLAG)
-            *state = FLAG_RCV;
-        else if (byte == C_FLAG)
-            *state = C_RCV;
-        else
-            *state = START;
-        break;
-
-    // C_FLAG has been received, waiting for BCC of A_FLAG and C_FLAG
+    // FLAG_C has been received, waiting for BCC of FLAG_A and FLAG_C
     case C_RCV:
         if (byte == FLAG)
+        {
             *state = FLAG_RCV;
-        else if (byte == BCC(A_FLAG, C_FLAG))
+        }
+        else if (byte == BCC(FLAG_A, FLAG_C))
+        {
             *state = BCC_NORMAL;
+        }
         else
+        {
             *state = START;
+        }
         break;
-    // BCC for A_FLAG and C_FLAG received, waiting for final FLAG
+
+    // FLAG_A has been received, waiting for FLAG_C
+    case A_RCV:
+        if (byte == FLAG)
+        {
+            *state = FLAG_RCV;
+        }
+        else if (byte == FLAG_C)
+        {
+            *state = C_RCV;
+        }
+        else
+        {
+            *state = START;
+        }
+        break;
+
+    // BCC for FLAG_A and FLAG_C received, waiting for final FLAG
     case BCC_NORMAL:
         if (byte == FLAG)
+        {
             *state = DONE;
+        }
         else
+        {
             *state = START;
+        }
         break;
 
     default:
@@ -689,26 +713,26 @@ void determineStateDISC(stateMachine *state, char byte)
 }
 
 // Closes the logical link layer communication.
-int llclose(int statistics)
+int llclose(int statistics, LinkLayer linkLayer)
 {
-    int bytes = 0;
+    int bytesNum = 0;
     unsigned char aux = 0;
-    unsigned char msg[256] = {0};
+    unsigned char message[256] = {0};
 
-    switch (genLinkLayer.role)
+    switch (linkLayer.role)
     {
     case LlTx:
         // Send DISC (Disconnect Frame)
-        msg[0] = FLAG;
-        msg[1] = 0x03;
-        msg[2] = 0x0B;
-        msg[3] = BCC(0x03, 0x0B);
-        msg[4] = FLAG;
-        bytes = write(fd, msg, 5);
+        message[0] = FLAG;
+        message[1] = 0x03;
+        message[2] = 0x0B;
+        message[3] = BCC(0x03, 0x0B);
+        message[4] = FLAG;
+        bytesNum = write(fd, message, 5);
         printf("Sent DISC: ");
-        for (int i = 0; i < bytes; i++)
+        for (int i = 0; i < bytesNum; i++)
         {
-            printf("%02X ", msg[i]); // Print each element of msg as a hexadecimal value
+            printf("%02X ", message[i]); // Print each element of message as a hexadecimal value
         }
         printf("\n");
         state = START;
@@ -718,7 +742,7 @@ int llclose(int statistics)
         while (STOP == FALSE)
         {
             read(fd, &aux, 1);
-            determineStateDISC(&state, aux);
+            DISCStateDetermine(&state, aux);
             if (state == DONE)
                 STOP = TRUE;
         }
@@ -730,11 +754,11 @@ int llclose(int statistics)
         ua[2] = 0x07;
         ua[3] = BCC(0x03, 0x07);
         ua[4] = FLAG;
-        bytes = write(fd, ua, UA_SIZE);
-        printf("Sent UA: ");
-        for (int i = 0; i < bytes; i++)
+        bytesNum = write(fd, ua, SIZE_UA);
+        printf("UA sent: ");
+        for (int i = 0; i < bytesNum; i++)
         {
-            printf("%02X ", ua[i]); // Print each element of msg as a hexadecimal value
+            printf("%02X ", ua[i]); // Print each element of message as a hexadecimal value
         }
         printf("\n");
         break;
@@ -747,7 +771,7 @@ int llclose(int statistics)
         while (STOP == FALSE)
         {
             read(fd, &aux, 1);
-            determineStateDISC(&state, aux);
+            DISCStateDetermine(&state, aux);
 
             if (state == DONE)
                 STOP = TRUE;
@@ -755,16 +779,18 @@ int llclose(int statistics)
         printf("Received DISC\n");
 
         // Send DISC as acknowledgment
-        msg[0] = FLAG;
-        msg[1] = 0x03;
-        msg[2] = 0x0B;
-        msg[3] = BCC(0x03, 0x0B);
-        msg[4] = FLAG;
-        bytes = write(fd, msg, 5);
+        message[0] = FLAG;
+        message[1] = 0x03;
+        message[2] = 0x0B;
+        message[3] = BCC(0x03, 0x0B);
+        message[4] = FLAG;
+        bytesNum = write(fd, message, 5);
+
         printf("Sent DISC to acknowledge: ");
-        for (int i = 0; i < bytes; i++)
+
+        for (int i = 0; i < bytesNum; i++)
         {
-            printf("%02X ", msg[i]); // Print each element of msg as a hexadecimal value
+            printf("%02X ", message[i]); // Print each element of message as a hexadecimal value
         }
         printf("\n");
 
@@ -774,7 +800,7 @@ int llclose(int statistics)
         while (STOP == FALSE)
         {
             read(fd, &aux, 1);
-            determineState(&state, aux, 1);
+            stateDetermine(&state, aux, 1);
 
             if (state == DONE)
                 STOP = TRUE;
@@ -784,7 +810,7 @@ int llclose(int statistics)
     }
 
     // Restore old terminal settings
-    if (tcsetattr(fd, TCSANOW, &oldtio) != 0)
+    if (tcsetattr(fd, TCSANOW, &oldTermIO) != 0)
     {
         perror("llclose() - Error on tcsetattr()");
         return -1;
