@@ -396,14 +396,14 @@ int llwrite(const unsigned char *buf, int bufSize)
         {
         case ESC:
             message[i + j + 4] = ESC;
-            message[i + j + 5] = ESC;
+            message[i + j + 5] = ESC ^0x20;
             BCC2 = BCC(BCC2, ESC);
             i++;
             break;
 
         case FLAG:
             message[i + j + 4] = ESC;
-            message[i + j + 5] = FLAG;
+            message[i + j + 5] = FLAG ^0x20;
             BCC2 = BCC(BCC2, FLAG);
             i++;
             break;
@@ -572,8 +572,8 @@ int receiveData(unsigned char *packet, int sequenceNum, size_t *size_read)
                 else
                 {
                     stuffing = FALSE; // Reset the stuffing flag
-                    BCC2 = BCC(BCC2, receivedByte);
-                    packet[i] = receivedByte;
+                    BCC2 = BCC(BCC2, receivedByte ^ 0x20);
+                    packet[i] = receivedByte ^ 0x20;
                     i++;
                 }
                 break;
