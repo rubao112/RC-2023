@@ -43,14 +43,16 @@ int sendCPacket(int fd, unsigned char packetType, const char *filename)
     return 0;
 }
 
+#define FRAME_SIZE 1020
+
 int sendDPacket(int fd, const char *filename) 
 {
     FILE *f = fopen(filename, "rb");
-    unsigned char buf[1024];
+    unsigned char buf[FRAME_SIZE + 4];
     unsigned int bytesRead = 0;
     int packetNumber = 0;
 
-    while ((bytesRead = fread(buf + 4, 1, 1020, f)) > 0) 
+    while ((bytesRead = fread(buf + 4, 1, FRAME_SIZE, f)) > 0) 
     {
         buf[0] = DATA_PACKET;
         buf[1] = packetNumber;
