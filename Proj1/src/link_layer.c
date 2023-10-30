@@ -41,7 +41,7 @@ int alarmCount = 0;
 int alarmOn;
 
 volatile int STOP = FALSE;
-struct termios oldTermIO; // old terminal IO settings
+struct termios oldtio; // old terminal IO settings
 
 int nRetransmissions = 0;
 LinkLayer linkLayer;
@@ -131,7 +131,7 @@ int llopen(LinkLayer connectionParameters)
     action.sa_flags = 0;
     action.sa_handler = alarmManager;
     sigaction(SIGALRM, &action, NULL);
-    struct termios newTermIO;
+    struct termios newtio;
     linkLayer = connectionParameters;
 
     // Open the serial port with read/write access
@@ -144,26 +144,26 @@ int llopen(LinkLayer connectionParameters)
     }
 
     // Save current settings of the port
-    if (tcgetattr(fd, &oldTermIO) == -1)
+    if (tcgetattr(fd, &oldtio) == -1)
     {
         perror("tcgetattr");
         exit(-1);
     }
 
     // Clear the structure for the new port settings
-    memset(&newTermIO, 0, sizeof(newTermIO));
+    memset(&newtio, 0, sizeof(newtio));
 
     // Set parameters for the serial port connection
-    newTermIO.c_iflag = IGNPAR;
-    newTermIO.c_cflag = connectionParameters.baudRate | CS8 | CLOCAL | CREAD;
-    newTermIO.c_lflag = 0;
-    newTermIO.c_oflag = 0;
-    newTermIO.c_cc[VTIME] = 1; // Inter-character timer is not used
-    newTermIO.c_cc[VMIN] = 0;  // Read blocks until a character arrives
+    newtio.c_iflag = IGNPAR;
+    newtio.c_cflag = connectionParameters.baudRate | CS8 | CLOCAL | CREAD;
+    newtio.c_lflag = 0;
+    newtio.c_oflag = 0;
+    newtio.c_cc[VTIME] = 1; // Inter-character timer is not used
+    newtio.c_cc[VMIN] = 0;  // Read blocks until a character arrives
     tcflush(fd, TCIOFLUSH);
 
     // Apply new settings to the port
-    if (tcsetattr(fd, TCSANOW, &newTermIO) == -1)
+    if (tcsetattr(fd, TCSANOW, &newtio) == -1)
     {
         perror("tcsetattr");
         exit(-1);
@@ -826,7 +826,7 @@ int llclose(int statistics)
     }
 
     // Restore old terminal settings
-    if (tcsetattr(fd, TCSANOW, &oldTermIO) != 0)
+    if (tcsetattr(fd, TCSANOW, &oldtio) != 0)
     {
         perror("llclose() - Error on tcsetattr()");
         return -1;
