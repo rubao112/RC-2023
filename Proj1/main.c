@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
     applicationLayer(serialPort, role, BAUDRATE, N_TRIES, TIMEOUT, filename);
 
     end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Transfer took %f seconds to execute \n", cpu_time_used); 
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
+    printf("Transfer took %.4f milliseconds to execute \n", cpu_time_used); 
 
 
 

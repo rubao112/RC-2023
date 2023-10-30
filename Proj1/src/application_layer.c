@@ -91,7 +91,7 @@ int receivePacket(int fd, const char *filename)
 {   
     FILE *f;
     unsigned int addSize, bytesRead;
-    unsigned char buf[FRAME_SIZE + 4];
+    unsigned char buf[(FRAME_SIZE+4)*2];
     int packetNumber = 0;
    
     while (1) {

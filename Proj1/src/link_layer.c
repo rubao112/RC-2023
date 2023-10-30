@@ -633,6 +633,16 @@ int llread(unsigned char *packet)
             write(fd, buf, 5);
         }
     }
+
+    usleep(10000);
+
+    /*
+    printf("|Received packet (size: %zu):\n", size_read);
+        for (size_t i = 0; i < size_read; i++) {
+            printf("%02X ", packet[i]); // Print each byte as a hexadecimal value
+        }
+        printf("|\n");
+        */
     // Once data is received correctly, send an ACK
     printf("Everything in order, sending ACK\n");
     sequenceNum = 1 - sequenceNum; // Toggle the sequence number
