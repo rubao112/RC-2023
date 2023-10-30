@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "application_layer.h"
 
@@ -40,8 +41,18 @@ int main(int argc, char *argv[])
            TIMEOUT,
            filename);
 
+    clock_t start, end;
+    double cpu_time_used;
+     
+     start = clock();
+
    
     applicationLayer(serialPort, role, BAUDRATE, N_TRIES, TIMEOUT, filename);
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("Transfer took %f seconds to execute \n", cpu_time_used); 
+
 
 
     return 0;
