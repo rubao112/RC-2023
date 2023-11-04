@@ -4,10 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <termios.h>
 
 #include "application_layer.h"
 
-#define BAUDRATE 9600
+#define BAUDRATE B38400
 #define N_TRIES 3
 #define TIMEOUT 4
 
