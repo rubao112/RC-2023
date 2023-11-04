@@ -476,9 +476,6 @@ int llwrite(const unsigned char *buf, int bufSize)
 // LLREAD
 ////////////////////////////////////////////////
 
-#define HEADER_ERROR_PROB   0.1
-#define DATA_ERROR_PROB     0.8 / 1020
-
 // Function to process received data and handle byte stuffing return true when it must return ack, and false for nack
 int receiveData(unsigned char *packet, int sequenceNum, size_t *size_read)
 {
@@ -494,18 +491,7 @@ int receiveData(unsigned char *packet, int sequenceNum, size_t *size_read)
         unsigned int bytesNum = read(fd, &receivedByte, 1);
 
         if (bytesNum > 0)
-        {
-            // Check if the byte is in the data part of the frame
-            
-            if (state == BCC_DATA)
-            {
-                // Simulate an error in the data part with a specific probability (FER)
-                if ((double)rand() / RAND_MAX < DATA_ERROR_PROB)
-                {
-                    receivedByte ^= (1 << (rand() % 8)); // Flip a random bit in the data
-                }
-            }
-            
+        {        
 
             switch (state)
             {
@@ -639,15 +625,6 @@ int llread(unsigned char *packet)
         }
     }
 
-    usleep(10000);
-
-    /*
-    printf("|Received packet (size: %zu):\n", size_read);
-        for (size_t i = 0; i < size_read; i++) {
-            printf("%02X ", packet[i]); // Print each byte as a hexadecimal value
-        }
-        printf("|\n");
-        */
     // Once data is received correctly, send an ACK
     printf("Everything in order, sending ACK\n");
     sequenceNum = 1 - sequenceNum; // Toggle the sequence number
