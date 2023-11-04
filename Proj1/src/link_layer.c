@@ -138,7 +138,7 @@ int llopen(LinkLayer connectionParameters)
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
 
     if (fd < 0)
-    {
+    {   
         perror(connectionParameters.serialPort);
         exit(-1);
     }
@@ -264,6 +264,10 @@ int llopen(LinkLayer connectionParameters)
 
     return fd;
 }
+
+////////////////////////////////////////////////
+// LLWRITE
+////////////////////////////////////////////////
 
 // Process received ACK messages
 void receiveACK(stateMachine *state, unsigned char byte, unsigned char *ack, int sequenceNum)
