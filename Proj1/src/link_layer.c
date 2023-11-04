@@ -635,7 +635,10 @@ int llread(unsigned char *packet)
     return size_read;
 }
 
+
+////////////////////////////////////////////////
 // LLCLOSE
+////////////////////////////////////////////////
 
 // Determine the next state of the state machine based on the received byte.
 void DISCStateDetermine(stateMachine *state, char byte)
@@ -769,6 +772,7 @@ int llclose(int statistics)
             printf("%02X ", ua[i]); // Print each element of message as a hexadecimal value
         }
         printf("\n");
+        sleep(0.8);
         break;
 
     case LlRx:
