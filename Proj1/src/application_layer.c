@@ -19,6 +19,7 @@ int status; /*TRANSMITTER | RECEIVER*/
 #define START_PACKET 0x02
 #define DATA_PACKET 0x01
 
+// Function to send control packet with file information
 int sendCPacket(int fd, unsigned char packetType, const char *filename) 
 {
     FILE *f = fopen(filename, "rb");
@@ -43,16 +44,15 @@ int sendCPacket(int fd, unsigned char packetType, const char *filename)
     return 0;
 }
 
-#define FRAME_SIZE 1020
-
+// Function to send data packets with file content
 int sendDPacket(int fd, const char *filename) 
 {
     FILE *f = fopen(filename, "rb");
-    unsigned char buf[FRAME_SIZE + 4];
+    unsigned char buf[MAX_PAYLOAD_SIZE + 4];
     unsigned int bytesRead = 0;
     int packetNumber = 0;
 
-    while ((bytesRead = fread(buf + 4, 1, FRAME_SIZE, f)) > 0) 
+    while ((bytesRead = fread(buf + 4, 1, MAX_PAYLOAD_SIZE, f)) > 0) 
     {
         buf[0] = DATA_PACKET;
         buf[1] = packetNumber;
@@ -71,6 +71,7 @@ int sendDPacket(int fd, const char *filename)
     return 0;
 }
 
+// Function to direct packet send request to appropriate function based on packet type
 int sendPacket(int fd, unsigned char packetType, const char *filename) 
 {
     switch (packetType) {
@@ -87,11 +88,12 @@ int sendPacket(int fd, unsigned char packetType, const char *filename)
     }
 }
 
+// Function to receive packets and write data to file as per packet type
 int receivePacket(int fd, const char *filename) 
 {   
     FILE *f;
     unsigned int addSize, bytesRead;
-    unsigned char buf[(FRAME_SIZE+4)*2];
+    unsigned char buf[(MAX_PAYLOAD_SIZE+4)*2];
     int packetNumber = 0;
    
     while (1) {
