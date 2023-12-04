@@ -142,7 +142,7 @@
 >     /interface bridge port add bridge=bridge51 interface=ether5
 > ```
 > 
-> 4. Trocar o cabo ligado à consola do Switch para o Router MT
+> 4. Trocar o cabo ligado à consola do Switch para o Router MTIK
 > 
 > 5. No Tux52 conectar ao router desde o GTKterm com:
 > 
