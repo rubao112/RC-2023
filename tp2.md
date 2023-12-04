@@ -103,10 +103,10 @@
 > 3. Ativar *ip forwarding* e desativar ICMP no Tux54
 > ```bash
 >     #3 Ip forwarding t4
->     echo 1 > /proc/sys/net/ipv4/ip_forward
+>     sysctl net.ipv4.ip_forward=1
 > 
 >     #4 Disable ICMP echo ignore broadcast T4
->     echo 0 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+>     sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
 > ```
 > 
 > 4. Observar MAC e Ip no Tux54eth0 e Tux54eth1
@@ -142,7 +142,7 @@
 >     /interface bridge port add bridge=bridge51 interface=ether5
 > ```
 > 
-> 4. Trocar o cabo ligado à consola do Switch para o Router MT
+> 4. Trocar o cabo ligado à consola do Switch para o Router MTIK
 > 
 > 5. No Tux52 conectar ao router desde o GTKterm com:
 > 
@@ -162,7 +162,7 @@
 > 7. Configurar ip do Router pela consola do router no GTKterm do Tux52
 > 
 > ```bash
->     /ip address add address=172.16.1.59/24 interface=ether1
+>     /ip address add address=172.16.2.59/24 interface=ether1
 >     /ip address add address=172.16.51.254/24 interface=ether2
 > ```
 > 
@@ -174,14 +174,14 @@
 >     route add default gw 172.16.51.254 # Tux54
 > 
 >     /ip route add dst-address=172.16.50.0/24 gateway=172.16.51.253  # Router console
->     /ip route add dst-address=0.0.0.0/0 gateway=172.16.1.254        # Router console
+>     /ip route add dst-address=0.0.0.0/0 gateway=172.16.2.254        # Router console
 > ```
 > 
 > ## DNS
 > 1. Em todos os Tuxs, adicionar a seguinte linha ao ficheiro /etc/resolv.conf
 > 
 > ```note
-> nameserver 172.16.1.1
+> nameserver 172.16.2.1
 > ```
 > 2. Em todos os Tux, fazer ping do google para verificar se podem ser usados nomes como host
 > 
