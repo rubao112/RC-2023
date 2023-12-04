@@ -103,10 +103,10 @@
 > 3. Ativar *ip forwarding* e desativar ICMP no Tux54
 > ```bash
 >     #3 Ip forwarding t4
->     echo 1 > /proc/sys/net/ipv4/ip_forward
+>     sysctl net.ipv4.ip_forward=1
 > 
 >     #4 Disable ICMP echo ignore broadcast T4
->     echo 0 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+>     sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
 > ```
 > 
 > 4. Observar MAC e Ip no Tux54eth0 e Tux54eth1
