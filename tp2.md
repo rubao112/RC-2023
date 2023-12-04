@@ -162,7 +162,7 @@
 > 7. Configurar ip do Router pela consola do router no GTKterm do Tux52
 > 
 > ```bash
->     /ip address add address=172.16.1.59/24 interface=ether1
+>     /ip address add address=172.16.2.59/24 interface=ether1
 >     /ip address add address=172.16.51.254/24 interface=ether2
 > ```
 > 
@@ -174,14 +174,14 @@
 >     route add default gw 172.16.51.254 # Tux54
 > 
 >     /ip route add dst-address=172.16.50.0/24 gateway=172.16.51.253  # Router console
->     /ip route add dst-address=0.0.0.0/0 gateway=172.16.1.254        # Router console
+>     /ip route add dst-address=0.0.0.0/0 gateway=172.16.2.254        # Router console
 > ```
 > 
 > ## DNS
 > 1. Em todos os Tuxs, adicionar a seguinte linha ao ficheiro /etc/resolv.conf
 > 
 > ```note
-> nameserver 172.16.1.1
+> nameserver 172.16.2.1
 > ```
 > 2. Em todos os Tux, fazer ping do google para verificar se podem ser usados nomes como host
 > 
