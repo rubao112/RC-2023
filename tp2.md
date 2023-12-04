@@ -1,7 +1,9 @@
 > # Steps
 > 
 > Reset dos PCs:
+> 
 > Terminal: systemctl restart networking
+> 
 > Ligar Cisco -> Rs232 ao console do switch
 >
 > ## IP Network
