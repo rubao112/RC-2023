@@ -6,7 +6,7 @@ INCLUDE = include/
 BIN = bin/
 
 # Source files
-SOURCES = $(SRC)/download.c $(SRC)/getip.c
+SOURCES = $(SRC)/download.c $(SRC)/getIp.c $(SRC)/clientTCP.c
 
 .PHONY: downloader
 downloader: $(SOURCES)

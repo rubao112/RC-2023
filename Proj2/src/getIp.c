@@ -1,5 +1,7 @@
 #include "../include/download.h"
-#include "../include/getip.h"
+#include "../include/getIp.h"
+#include "../include/clientTCP.h"
+
 
 int getIP(const char *host, struct URL *url)
 {
