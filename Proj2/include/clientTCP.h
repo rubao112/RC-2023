@@ -11,61 +11,61 @@
 #include <ctype.h>
 
 /**
- * Creates a socket and connects to the specified IP address and port.
- * @param ip The IP address to connect to.
- * @param port The port number to connect to.
- * @return The socket file descriptor on success, or -1 on error.
+ * Creates a socket and connects to the specified port and IP address.
+ * @param ip Specified IP Adress for connection.
+ * @param port Specified port for connection.
+ * @return File descriptor for the server connection if success, else -1 on error.
  */
 int createSocket(char *ip, int port);
 
 /**
  * Authenticates the connection with the given user credentials.
- * @param socket The socket file descriptor.
+ * @param socket File descriptor for the server connection.
  * @param user The username for authentication.
  * @param pass The password for authentication.
- * @return The server response code.
+ * @return Server´s response code.
  */
-int authConn(const int socket, const char *user, const char *pass);
+int loginConnection(const int socket, const char *password, const char *user);
 
 /**
- * Switches the FTP connection to passive mode and parses the server's response for data connection details.
- * @param socket The socket file descriptor.
- * @param ip A buffer to store the parsed IP address for data connection.
- * @param port A pointer to store the parsed port number for data connection.
- * @return The server response code.
- */
-int passiveMode(const int socket, char *ip, int *port);
-
-/**
- * Reads and parses the server's response.
- * @param socket The socket file descriptor.
- * @param buffer A buffer to store the server's response.
- * @return The server response code.
+ * Reads server's response.
+ * @param socket File descriptor for the server connection.
+ * @param buffer Buffer for the server's response.
+ * @return Server´s response code.
  */
 int readResponse(const int socket, char *buffer);
 
 /**
- * Sends a request to the server to retrieve a specific resource.
- * @param socket The socket file descriptor.
- * @param resource The name of the resource to request.
- * @return The server response code.
+ * Swaps to passive mode and parses the response from the server for data connection details.
+ * @param socket File descriptor for the server connection.
+ * @param ip Buffer for the data connection ip.
+ * @param port Pointer to store data connection port.
+ * @return Server´s response code.
+ */
+int passive(const int socket, int *port, char *ip);
+
+/**
+ * Sends server request for specified resource.
+ * @param socket File descriptor for the server connection.
+ * @param resource Name of the specified resource.
+ * @return Server´s response code.
  */
 int requestResource(const int socket, char *resource);
 
 /**
- * Retrieves the requested resource from the server and saves it to a file.
- * @param socketA The socket file descriptor for the control connection.
- * @param socketB The socket file descriptor for the data connection.
- * @param filename The name of the file to save the resource to.
- * @return The server response code.
+ * Gets and saves the requested resource from the server into a file.
+ * @param socketA File descriptor for the control connection.
+ * @param socketB File descriptor for the data connection.
+ * @param filename Name of the file for saving the resource.
+ * @return Server´s response code.
  */
 int getResource(const int socketA, const int socketB, char *filename);
 
 /**
- * Closes the FTP connection and associated sockets.
- * @param socketA The socket file descriptor for the control connection.
- * @param socketB The socket file descriptor for the data connection.
- * @return 0 on success, -1 on error.
+ * Closes FTP connection and all sockets associated to it.
+ * @param socketA File descriptor for the control connection.
+ * @param socketB File descriptor for the for the data connection.
+ * @return 0 if success, else -1 on error.
  */
 int closeConnection(const int socketA, const int socketB);
 

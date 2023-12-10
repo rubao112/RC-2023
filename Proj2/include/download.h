@@ -48,63 +48,64 @@ typedef enum
     END
 } ResponseState;
 
-/*
- * Create socket file descriptor based on given server ip and port
- * @param ip, a string containing the server ip
- * @param port, an integer value containing the server port
- * @return socket file descriptor if there is no error or -1 otherwise
+/**
+ * Creates a socket and connects to the specified port and IP address.
+ * @param ip Specified IP Adress for connection.
+ * @param port Specified port for connection.
+ * @return File descriptor for the server connection if success, else -1 on error.
  */
 int createSocket(char *ip, int port);
 
-/*
- * Authenticate connection
- * @param socket, server connection file descriptor
- * @param user, a string containing the username
- * @param pass, a string containing the password
- * @return server response code obtained by the operation
+/**
+ * Authenticates the connection with the given user credentials.
+ * @param socket File descriptor for the server connection.
+ * @param user The username for authentication.
+ * @param pass The password for authentication.
+ * @return Server´s response code.
  */
-int authConn(const int socket, const char *user, const char *pass);
+int loginConnection(const int socket, const char *password, const char *user);
 
-/*
- * Read server response
- * @param socket, server connection file descriptor
- * @param buffer, string that will be filled with server response
- * @return server response code obtained by the operation
+/**
+ * Reads server's response.
+ * @param socket File descriptor for the server connection.
+ * @param buffer Buffer for the server's response.
+ * @return Server´s response code.
  */
 int readResponse(const int socket, char *buffer);
 
-/*
- * Enter in passive mode
- * @param socket, server connection file descriptor
- * @param ip, string that will be filled with data connection ip
- * @param port, string that will be filled with data connection port
- * @return server response code obtained by the operation
+/**
+ * Swaps to passive mode and parses the response from the server for data connection details.
+ * @param socket File descriptor for the server connection.
+ * @param ip Buffer for the data connection ip.
+ * @param port Pointer to store data connection port.
+ * @return Server´s response code.
  */
-int passiveMode(const int socket, char *ip, int *port);
+int passive(const int socket, int *port, char *ip);
 
-/*
- * Request resource
- * @param socket, server connection file descriptor
- * @param resource, string that contains the desired resource
- * @return server response code obtained by the operation
+/**
+ * Sends server request for specified resource.
+ * @param socket File descriptor for the server connection.
+ * @param resource Name of the specified resource.
+ * @return Server´s response code.
  */
 int requestResource(const int socket, char *resource);
 
-/*
- * Get resource from server and download it in current directory
- * @param socketA, server connection file descriptor
- * @param socketB, server connection file descriptor
- * @param filename, string that contains the desired file name
- * @return server response code obtained by the operation
+/**
+ * Gets and saves the requested resource from the server into a file.
+ * @param socketA File descriptor for the control connection.
+ * @param socketB File descriptor for the data connection.
+ * @param filename Name of the file for saving the resource.
+ * @return Server´s response code.
  */
 int getResource(const int socketA, const int socketB, char *filename);
 
-/*
- * Closes the server connection and the socket itself
- * @param socketA, server connection file descriptor
- * @param socketB, server connection file descriptor
- * @return 0 if there is no close error or -1 otherwise
+/**
+ * Closes FTP connection and all sockets associated to it.
+ * @param socketA File descriptor for the control connection.
+ * @param socketB File descriptor for the for the data connection.
+ * @return 0 if success, else -1 on error.
  */
 int closeConnection(const int socketA, const int socketB);
+
 
 #endif
