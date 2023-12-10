@@ -1,5 +1,6 @@
 #include "../include/download.h"
 #include "../include/getip.h"
+#include "../include/clientTCP.h"
 
 int createSocket(char *ip, int port) {
 
@@ -25,36 +26,37 @@ int createSocket(char *ip, int port) {
 
 int loginConnection(const int socket, const char *password, const char *user) {
 
-    char answer[MAX_LENGTH];
-    char userCommand[5 + strlen(user) + 1];
-    sprintf(userCommand, "user %s\n", user);
-    char passCommand[5 + strlen(password) + 1];
-    sprintf(passCommand, "pass %s\n", password);
+    char response[SIZE_MAX];
 
-    write(socket, userCommand, strlen(userCommand));
+    char inputPassword[strlen(password) + 6];
+    sprintf(inputPassword, "pass %s\n", password);
 
-    if (readResponse(socket, answer) != SV_READY4PASS) {
-        printf("Unknown user '%s'. Abort.\n", user);
+    char inputUser[strlen(user) + 6];
+    sprintf(inputUser, "user %s\n", user);
+
+    write(socket, inputUser, strlen(inputUser));
+
+    if (readResponse(socket, response) != SERVER_PASSREADY) {
+        printf("Abort. Unknown user '%s'.\n", user);
         exit(-1);
     }
 
-    write(socket, passCommand, strlen(passCommand));
-    return readResponse(socket, answer);
+    write(socket, inputPassword, strlen(inputPassword));
+    return readResponse(socket, response);
 }
 
 int passive(const int socket, int *port, char *ip) {
     
-    char answer[MAX_LENGTH];
+    char response[SIZE_MAX];
     write(socket, "pasv\n", 5);
 
-    if (readResponse(socket, answer) != SV_PASSIVE) {
+    if (readResponse(socket, response) != SERVER_PASSIVE) {
         return -1;
     }
 
+    int partsIp[4], partsPort[2];
     char *token;
-    int ip_parts[4], port_parts[2];
-
-    token = strchr(answer, '(');
+    token = strchr(response, '(');
 
     if (token == NULL) {
         return -1;
@@ -69,7 +71,7 @@ int passive(const int socket, int *port, char *ip) {
             return -1;
         }
 
-        ip_parts[i] = atoi(token);
+        partsIp[i] = atoi(token);
     }
 
     for (int i = 0; i < 2; i++) {
@@ -79,49 +81,50 @@ int passive(const int socket, int *port, char *ip) {
             return -1;
         }
 
-        port_parts[i] = atoi(token);
+        partsPort[i] = atoi(token);
     }
 
-    sprintf(ip, "%d.%d.%d.%d", ip_parts[0], ip_parts[1], ip_parts[2], ip_parts[3]);
+    sprintf(ip, "%d.%d.%d.%d", partsIp[0], partsIp[1], partsIp[2], partsIp[3]);
 
-    *port = port_parts[0] * 256 + port_parts[1];
+    *port = partsPort[0] * 256 + partsPort[1];
 
-    return SV_PASSIVE;
+    return SERVER_PASSIVE;
 }
 
 int readResponse(const int socket, char *buffer) {
 
     char byte;
-    int index = 0, responseCode;
+    int responseCode;
+    int index = 0;
     ResponseState state = START;
-    memset(buffer, 0, MAX_LENGTH);
+    memset(buffer, 0, SIZE_MAX);
 
     while (state != END) {
         read(socket, &byte, 1);
         switch (state) {
         case START:
-            if (byte == ' ')
+            if (byte == ' ') {
                 state = SINGLE;
-            else if (byte == '-')
+                } else if (byte == '-') {
                 state = MULTIPLE;
-            else if (byte == '\n')
-                state = END;
-            else
+                } else if (byte == '\n') {
+                state = END; 
+                } else {
                 buffer[index++] = byte;
+                }
+            break;
+        case MULTIPLE:
+            if (byte == '\n') {
+                memset(buffer, 0, SIZE_MAX);
+                state = START;
+                index = 0;
+            } else { 
+                buffer[index++] = byte;
+                }
             break;
         case SINGLE:
             if (byte == '\n')
                 state = END;
-            else
-                buffer[index++] = byte;
-            break;
-        case MULTIPLE:
-            if (byte == '\n')
-            {
-                memset(buffer, 0, MAX_LENGTH);
-                state = START;
-                index = 0;
-            }
             else
                 buffer[index++] = byte;
             break;
@@ -143,42 +146,42 @@ int readResponse(const int socket, char *buffer) {
 
 int requestResource(const int socket, char *resource) {
 
-    char fileCommand[5 + strlen(resource) + 1], answer[MAX_LENGTH];
-    sprintf(fileCommand, "retr %s\n", resource);
-    write(socket, fileCommand, sizeof(fileCommand));
-    return readResponse(socket, answer);
+    char inputFile[5 + strlen(resource) + 1], response[SIZE_MAX];
+    sprintf(inputFile, "retr %s\n", resource);
+    write(socket, inputFile, sizeof(inputFile));
+    return readResponse(socket, response);
 }
 
-int getResource(const int socketA, const int socketB, char *filename) {
+int getResource(const int socket1, const int socket2, char *filename) {
 
     FILE *fd = fopen(filename, "wb");
 
     if (fd == NULL) {
-        printf("Error opening or creating file '%s'\n", filename);
+        printf("Opening or creating file error '%s'\n", filename);
         exit(-1);
     }
 
-    char buffer[MAX_LENGTH];
+    char buffer[SIZE_MAX];
     int bytes;
 
     do {
-        bytes = read(socketB, buffer, MAX_LENGTH);
+        bytes = read(socket2, buffer, SIZE_MAX);
         if (fwrite(buffer, bytes, 1, fd) < 0)
             return -1;
     } while (bytes);
 
     fclose(fd);
-    return readResponse(socketA, buffer);
+    return readResponse(socket1, buffer);
 }
 
-int closeConnection(const int socketA, const int socketB) {
+int closeConnection(const int socket1, const int socket2) {
 
-    char answer[MAX_LENGTH];
-    write(socketA, "quit\n", 5);
+    char response[SIZE_MAX];
+    write(socket1, "quit\n", 5);
 
-    if (readResponse(socketA, answer) != SV_GOODBYE) {
+    if (readResponse(socket1, response) != SERVER_GOODBYE) {
         return -1;
     }
 
-    return close(socketA) || close(socketB);
+    return close(socket1) || close(socket2);
 }

@@ -9,7 +9,6 @@
 #include <string.h>
 #include "download.h"
 
-#define MAX_LENGTH 500
 /**
  * Resolves the IP address from a given hostname.
  * @param host The hostname to be resolved.

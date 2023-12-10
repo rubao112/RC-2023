@@ -3,11 +3,11 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 
 /**
@@ -21,8 +21,8 @@ int createSocket(char *ip, int port);
 /**
  * Authenticates the connection with the given user credentials.
  * @param socket File descriptor for the server connection.
+ * @param password The password for authentication.
  * @param user The username for authentication.
- * @param pass The password for authentication.
  * @return Server´s response code.
  */
 int loginConnection(const int socket, const char *password, const char *user);
@@ -38,8 +38,8 @@ int readResponse(const int socket, char *buffer);
 /**
  * Swaps to passive mode and parses the response from the server for data connection details.
  * @param socket File descriptor for the server connection.
- * @param ip Buffer for the data connection ip.
  * @param port Pointer to store data connection port.
+ * @param ip Buffer for the data connection ip.
  * @return Server´s response code.
  */
 int passive(const int socket, int *port, char *ip);
@@ -54,19 +54,19 @@ int requestResource(const int socket, char *resource);
 
 /**
  * Gets and saves the requested resource from the server into a file.
- * @param socketA File descriptor for the control connection.
- * @param socketB File descriptor for the data connection.
+ * @param socket1 File descriptor for the control connection.
+ * @param socket2 File descriptor for the data connection.
  * @param filename Name of the file for saving the resource.
  * @return Server´s response code.
  */
-int getResource(const int socketA, const int socketB, char *filename);
+int getResource(const int socket1, const int socket2, char *filename);
 
 /**
  * Closes FTP connection and all sockets associated to it.
- * @param socketA File descriptor for the control connection.
- * @param socketB File descriptor for the for the data connection.
+ * @param socket1 File descriptor for the control connection.
+ * @param socket2 File descriptor for the for the data connection.
  * @return 0 if success, else -1 on error.
  */
-int closeConnection(const int socketA, const int socketB);
+int closeConnection(const int socket1, const int socket2);
 
 #endif // CLIENT_TCP_H

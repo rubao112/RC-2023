@@ -2,44 +2,44 @@
 #define DOWNLOAD_H
 #include <stdio.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
-#include <unistd.h>
 #include <string.h>
-#include <ctype.h>
-#include <regex.h>
 #include <termios.h>
+#include <ctype.h>
+#include <netinet/in.h>
+#include <regex.h>
 
-#define MAX_LENGTH 500
 #define FTP_PORT 21
+#define SIZE_MAX 512
 
 /* Server responses */
-#define SV_READY4AUTH 220
-#define SV_READY4PASS 331
-#define SV_LOGINSUCCESS 230
-#define SV_PASSIVE 227
-#define SV_READY4TRANSFER 150
-#define SV_TRANSFER_COMPLETE 226
-#define SV_GOODBYE 221
+#define SERVER_PASSIVE 227
+#define SERVER_LOGINREADY 220
+#define SERVER_LOGINSUCCESS 230
+#define SERVER_PASSREADY 331
+#define SERVER_TRANSFER_COMPLETE 226
+#define SERVER_TRANSFERREADY 150
+#define SERVER_GOODBYE 221
 
 /* Default login for case 'ftp://<host>/<url-path>' */
 #define DEFAULT_USER "anonymous"
-#define DEFAULT_PASSWORD "password"
+#define DEFAULT_PASSWORD "anonymous"
 
 /* Parser output */
 struct URL
 {
-    char host[MAX_LENGTH];     // 'ftp.up.pt'
-    char resource[MAX_LENGTH]; // 'parrot/misc/canary/warrant-canary-0.txt'
-    char file[MAX_LENGTH];     // 'warrant-canary-0.txt'
-    char user[MAX_LENGTH];     // 'username'
-    char password[MAX_LENGTH]; // 'password'
-    char ip[MAX_LENGTH];       // 193.137.29.15
+    char host[SIZE_MAX];
+    char user[SIZE_MAX];
+    char password[SIZE_MAX];
+    char resource[SIZE_MAX]; 
+    char file[SIZE_MAX];
+    char ip[SIZE_MAX];
 };
 
-/* Machine states that receives the response from the server */
+/* Machine states for server response */
 typedef enum
 {
     START,
@@ -59,8 +59,8 @@ int createSocket(char *ip, int port);
 /**
  * Authenticates the connection with the given user credentials.
  * @param socket File descriptor for the server connection.
+ * @param password The password for authentication.
  * @param user The username for authentication.
- * @param pass The password for authentication.
  * @return Server´s response code.
  */
 int loginConnection(const int socket, const char *password, const char *user);
@@ -76,8 +76,8 @@ int readResponse(const int socket, char *buffer);
 /**
  * Swaps to passive mode and parses the response from the server for data connection details.
  * @param socket File descriptor for the server connection.
- * @param ip Buffer for the data connection ip.
  * @param port Pointer to store data connection port.
+ * @param ip Buffer for the data connection ip.
  * @return Server´s response code.
  */
 int passive(const int socket, int *port, char *ip);
@@ -92,20 +92,19 @@ int requestResource(const int socket, char *resource);
 
 /**
  * Gets and saves the requested resource from the server into a file.
- * @param socketA File descriptor for the control connection.
- * @param socketB File descriptor for the data connection.
+ * @param socket1 File descriptor for the control connection.
+ * @param socket2 File descriptor for the data connection.
  * @param filename Name of the file for saving the resource.
  * @return Server´s response code.
  */
-int getResource(const int socketA, const int socketB, char *filename);
+int getResource(const int socket1, const int socket2, char *filename);
 
 /**
  * Closes FTP connection and all sockets associated to it.
- * @param socketA File descriptor for the control connection.
- * @param socketB File descriptor for the for the data connection.
+ * @param socket1 File descriptor for the control connection.
+ * @param socket2 File descriptor for the for the data connection.
  * @return 0 if success, else -1 on error.
  */
-int closeConnection(const int socketA, const int socketB);
-
+int closeConnection(const int socket1, const int socket2);
 
 #endif

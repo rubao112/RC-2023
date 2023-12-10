@@ -23,7 +23,6 @@ int getFileName(struct URL *url) {
     if (token != NULL) {
         strcpy(url->file, token + 1);
     } else {
-        // Handle the case where no '/' is present in the resource path
         strcpy(url->file, url->resource);
     }
 
@@ -31,42 +30,42 @@ int getFileName(struct URL *url) {
 }
 
 int parse(char *input, struct URL *url) {
-    
+
     char *ftp = strtok(input, "//");
 
     if (strcmp(ftp, "ftp:") != 0) {
-        printf("Error: Not using ftp protocol\n");
+        printf("Error: Ftp protocol isnt being used\n");
         return -1;
     }
 
     char *urlrest = strtok(NULL, "/");
     char *path = strtok(NULL, "");
     char *user = strtok(urlrest, ":");
-    char *pass = strtok(NULL, "@");
+    char *password = strtok(NULL, "@");
 
-    if (pass == NULL) {
+    if (password == NULL) {
         strcpy(url->user, "anonymous");
         strcpy(url->password, "password");
         strcpy(url->host, urlrest);
     } else {
         strcpy(url->user, user);
-        strcpy(url->password, pass);
+        strcpy(url->password, password);
         strcpy(url->host, strtok(NULL, ""));
     }
 
     if (path != NULL) {
         strcpy(url->resource, path);
     } else {
-        url->resource[0] = '\0'; // Empty string if path is not present
+        url->resource[0] = '\0';
     }
 
     if (getIP(url->host, url) != 0) {
-        printf("Error: Unable to resolve IP address\n");
+        printf("Error trying to to resolve IP address\n");
         return -1;
     }
 
     if (getFileName(url) != 0) {
-        printf("Error: Unable to extract file name\n");
+        printf("Error trying to extract file name\n");
         return -1;
     }
 
