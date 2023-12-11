@@ -123,10 +123,11 @@ int readResponse(const int socket, char *buffer) {
                 }
             break;
         case SINGLE:
-            if (byte == '\n')
+            if (byte == '\n') {
                 state = END;
-            else
+            } else {
                 buffer[index++] = byte;
+            }
             break;
         case END:
             break;
