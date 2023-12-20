@@ -1,5 +1,7 @@
 #include "../include/download.h"
 #include "../include/getip.h"
+#include "../include/clientTCP.h"
+
 
 int createSocket(char *ip, int port)
 {
